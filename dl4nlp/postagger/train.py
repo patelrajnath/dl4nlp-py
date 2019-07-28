@@ -1,11 +1,18 @@
 import torch
 from torch import nn, optim
 from dl4nlp.postagger.lstm_tagger import LSTMTagger
+from dl4nlp.utils import contextwin
 
 
-def prepare_sequence(seq, to_ix, use_cuda=False):
+def prepare_sequence(seq, to_ix, ctx=None, use_cuda=False):
     idxs = [to_ix[w] for w in seq]
-    return torch.tensor(idxs, dtype=torch.long).cuda()
+    if ctx:
+        idxs = contextwin(idxs, ctx)
+
+    if use_cuda:
+        return torch.tensor(idxs, dtype=torch.long).cuda()
+
+    return torch.tensor(idxs, dtype=torch.long)
 
 
 training_data = [
@@ -23,9 +30,11 @@ tag_to_ix = {"DET": 0, "NN": 1, "V": 2}
 # These will usually be more like 32 or 64 dimensional.
 # We will keep them small, so we can see how the weights change as we train.
 EMBEDDING_DIM = 512
+NUM_LAYERS = 2
 HIDDEN_DIM = 256
+CONTEXT=3
 
-model = LSTMTagger(EMBEDDING_DIM, HIDDEN_DIM, len(word_to_ix), len(tag_to_ix))
+model = LSTMTagger(NUM_LAYERS, CONTEXT, EMBEDDING_DIM, HIDDEN_DIM, len(word_to_ix), len(tag_to_ix))
 loss_function = nn.NLLLoss()
 optimizer = optim.SGD(model.parameters(), lr=0.1)
 
@@ -39,7 +48,7 @@ if use_cuda:
 # Note that element i,j of the output is the score for tag j for word i.
 # Here we don't need to train, so the code is wrapped in torch.no_grad()
 with torch.no_grad():
-    inputs = prepare_sequence(training_data[0][0], word_to_ix)
+    inputs = prepare_sequence(training_data[0][0], word_to_ix, CONTEXT, use_cuda=use_cuda)
     tag_scores = model(inputs)
     print(tag_scores)
 
@@ -51,11 +60,10 @@ for epoch in range(300):  # again, normally you would NOT do 300 epochs, it is t
 
         # Step 2. Get our inputs ready for the network, that is, turn them into
         # Tensors of word indices.
-        sentence_in = prepare_sequence(sentence, word_to_ix)
-        targets = prepare_sequence(tags, tag_to_ix)
+        sentence_in = prepare_sequence(sentence, word_to_ix, CONTEXT, use_cuda=use_cuda)
+        targets = prepare_sequence(tags, tag_to_ix, use_cuda=use_cuda)
 
         # Step 3. Run our forward pass.
-        sentence_in.cuda()
         tag_scores = model(sentence_in)
         print(tag_scores)
 
@@ -67,7 +75,7 @@ for epoch in range(300):  # again, normally you would NOT do 300 epochs, it is t
 
 # See what the scores are after training
 with torch.no_grad():
-    inputs = prepare_sequence(training_data[0][0], word_to_ix)
+    inputs = prepare_sequence(training_data[0][0], word_to_ix, CONTEXT, use_cuda=use_cuda)
     tag_scores = model(inputs)
 
     # The sentence is "the dog ate the apple".  i,j corresponds to score for tag j
