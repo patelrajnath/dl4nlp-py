@@ -1,6 +1,8 @@
 import torch
 from torch import nn, optim
-from dl4nlp.postagger.lstm_tagger import LSTMTagger
+
+from dl4nlp.models.gru import GRUTagger
+from dl4nlp.models.lstm import LSTMTagger
 from dl4nlp.utils import contextwin
 
 
@@ -34,7 +36,8 @@ NUM_LAYERS = 2
 HIDDEN_DIM = 256
 CONTEXT=3
 
-model = LSTMTagger(NUM_LAYERS, CONTEXT, EMBEDDING_DIM, HIDDEN_DIM, len(word_to_ix), len(tag_to_ix))
+# model = LSTMTagger(NUM_LAYERS, CONTEXT, EMBEDDING_DIM, HIDDEN_DIM, len(word_to_ix), len(tag_to_ix))
+model = GRUTagger(NUM_LAYERS, CONTEXT, EMBEDDING_DIM, HIDDEN_DIM, len(word_to_ix), len(tag_to_ix))
 loss_function = nn.NLLLoss()
 optimizer = optim.SGD(model.parameters(), lr=0.1)
 
