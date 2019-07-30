@@ -2,10 +2,10 @@ from torch import nn
 import torch.nn.functional as F
 
 
-class GRUTagger(nn.Module):
+class CNNTagger(nn.Module):
 
     def __init__(self, num_layers, context, embedding_dim, hidden_dim, vocab_size, tagset_size, bidirectional=False):
-        super(GRUTagger, self).__init__()
+        super(CNNTagger, self).__init__()
         self.hidden_dim = hidden_dim
 
         self.word_embeddings = nn.Embedding(vocab_size + 1, embedding_dim)
@@ -16,46 +16,43 @@ class GRUTagger(nn.Module):
         self.bidirectional=bidirectional
         self.dropout_out = 0.01
         self.context = context
+        self.in_channel=self.context*embedding_dim
 
         # Convolution 1
-        self.cnn1 = nn.Conv2d(in_channels=1,
-                              out_channels=16,
-                              kernel_size=5,
+        self.cnn1 = nn.Conv2d(in_channels=self.in_channel,
+                              out_channels=hidden_dim,
+                              kernel_size=3,
                               stride=1,
-                              padding=2)
+                              padding=1)
         self.relu1 = nn.ReLU()
 
         # Max pool 1
-        self.maxpool1 = nn.MaxPool2d(kernel_size=2)
+        self.maxpool1 = nn.MaxPool2d(kernel_size=3)
 
         # Convolution 2
-        self.cnn2 = nn.Conv2d(in_channels=16,
-                              out_channels=32,
-                              kernel_size=5,
+        self.cnn2 = nn.Conv2d(in_channels=hidden_dim,
+                              out_channels=hidden_dim,
+                              kernel_size=3,
                               stride=1,
-                              padding=2)
+                              padding=1)
         self.relu2 = nn.ReLU()
 
         # Max pool 2
-        self.maxpool2 = nn.MaxPool2d(kernel_size=2)
+        self.maxpool2 = nn.MaxPool2d(kernel_size=3)
 
         # Dropout for regularization
         self.dropout = nn.Dropout(p=0.5)
 
-        # Fully Connected 1
-        self.fc1 = nn.Linear(32 * 7 * 7, 10)
-
         # The linear layer that maps from hidden state space to tag space
-        if bidirectional:
-            self.hidden2tag = nn.Linear(hidden_dim*2, tagset_size)
-        else:
-            self.hidden2tag = nn.Linear(hidden_dim, tagset_size)
+        self.hidden2tag = nn.Linear(hidden_dim, tagset_size)
 
     def forward(self, sentence):
         n_tokens = int(len(sentence))
         embeds = self.word_embeddings(sentence)
         # Convolution 1
-        out = self.cnn1(embeds.view(n_tokens, 1, -1))
+        out = self.cnn1(embeds.view(n_tokens, self.in_channel, 1, -1))
+        # out = self.cnn1(embeds)
+        print(out.size())
         out = self.relu1(out)
 
         # Max pool 1
@@ -75,8 +72,8 @@ class GRUTagger(nn.Module):
         out = self.dropout(out)
 
         # Fully connected 1
-        out = self.fc1(out)
-        return out
+        tag_scores = self.hidden2tag(out)
+        return tag_scores
 
         # tag_space = self.hidden2tag(lstm_out.view(n_tokens, -1))
         # tag_scores = F.log_softmax(tag_space, dim=1)

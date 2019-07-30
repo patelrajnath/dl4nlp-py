@@ -1,6 +1,7 @@
 import torch
 from torch import nn, optim
 
+from dl4nlp.models.cnn import CNNTagger
 from dl4nlp.models.gru import GRUTagger
 from dl4nlp.models.lstm import LSTMTagger
 from dl4nlp.utils import contextwin
@@ -37,9 +38,12 @@ HIDDEN_DIM = 256
 CONTEXT=3
 
 # model = LSTMTagger(NUM_LAYERS, CONTEXT, EMBEDDING_DIM, HIDDEN_DIM, len(word_to_ix), len(tag_to_ix))
-model = GRUTagger(NUM_LAYERS, CONTEXT, EMBEDDING_DIM, HIDDEN_DIM, len(word_to_ix), len(tag_to_ix))
-loss_function = nn.NLLLoss()
-optimizer = optim.SGD(model.parameters(), lr=0.1)
+# model = GRUTagger(NUM_LAYERS, CONTEXT, EMBEDDING_DIM, HIDDEN_DIM, len(word_to_ix), len(tag_to_ix))
+model = CNNTagger(NUM_LAYERS, CONTEXT, EMBEDDING_DIM, HIDDEN_DIM, len(word_to_ix), len(tag_to_ix))
+# loss_function = nn.NLLLoss()
+loss_function = nn.CrossEntropyLoss()
+# optimizer = optim.SGD(model.parameters(), lr=0.1)
+optimizer = optim.SGD(model.parameters(), lr=0.001, momentum=0.9)
 
 use_cuda = torch.cuda.is_available()
 print(use_cuda)
@@ -52,6 +56,7 @@ if use_cuda:
 # Here we don't need to train, so the code is wrapped in torch.no_grad()
 with torch.no_grad():
     inputs = prepare_sequence(training_data[0][0], word_to_ix, CONTEXT, use_cuda=use_cuda)
+    # inputs = prepare_sequence(training_data[0][0], word_to_ix, use_cuda=use_cuda)
     tag_scores = model(inputs)
     print(tag_scores)
 
@@ -64,6 +69,7 @@ for epoch in range(300):  # again, normally you would NOT do 300 epochs, it is t
         # Step 2. Get our inputs ready for the network, that is, turn them into
         # Tensors of word indices.
         sentence_in = prepare_sequence(sentence, word_to_ix, CONTEXT, use_cuda=use_cuda)
+        # sentence_in = prepare_sequence(sentence, word_to_ix, use_cuda=use_cuda)
         targets = prepare_sequence(tags, tag_to_ix, use_cuda=use_cuda)
 
         # Step 3. Run our forward pass.
@@ -79,6 +85,7 @@ for epoch in range(300):  # again, normally you would NOT do 300 epochs, it is t
 # See what the scores are after training
 with torch.no_grad():
     inputs = prepare_sequence(training_data[0][0], word_to_ix, CONTEXT, use_cuda=use_cuda)
+    # inputs = prepare_sequence(training_data[0][0], word_to_ix, use_cuda=use_cuda)
     tag_scores = model(inputs)
 
     # The sentence is "the dog ate the apple".  i,j corresponds to score for tag j
