@@ -4,7 +4,7 @@ from torch import nn, optim
 from dl4nlp.data.data import MyIterator
 from dl4nlp.models.cnn import CNNTagger
 from dl4nlp.models.transformer_attn import build_model
-from dl4nlp.models.utils.utils import contextwin
+from dl4nlp.models.modelutils.utils import contextwin
 from dl4nlp.optim.regularization import LabelSmoothing
 from dl4nlp.optim.utils_training import batch_size_fn
 

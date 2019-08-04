@@ -19,11 +19,11 @@ import traceback
 from torch.autograd import Variable
 from torch.serialization import default_restore_location
 
-from dl4nlp.models.utils.utils_transfromer import subsequent_mask
+from dl4nlp.models.modelutils.utils_transfromer import subsequent_mask
 
 
 class Batch:
-    "Object for holding a batch of utils with mask during training."
+    "Object for holding a batch of modelutils with mask during training."
 
     def __init__(self, src, trg=None, pad=0):
         self.src = src

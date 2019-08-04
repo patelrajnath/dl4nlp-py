@@ -17,8 +17,8 @@ from torch import nn
 
 
 from dl4nlp.models.model_attenntion import MultiHeadedAttention
-from dl4nlp.models.utils.embedding import PositionwiseFeedForward, PositionalEncoding, Embeddings
-from dl4nlp.models.utils.utils_transfromer import clones
+from dl4nlp.models.modelutils.embedding import PositionwiseFeedForward, PositionalEncoding, Embeddings
+from dl4nlp.models.modelutils.utils_transfromer import clones
 
 
 class EncoderDecoder(nn.Module):
