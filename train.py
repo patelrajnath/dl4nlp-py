@@ -42,12 +42,13 @@ CONTEXT=3
 # model = LSTMTagger(NUM_LAYERS, CONTEXT, EMBEDDING_DIM, HIDDEN_DIM, len(word_to_ix), len(tag_to_ix))
 # model = GRUTagger(NUM_LAYERS, CONTEXT, EMBEDDING_DIM, HIDDEN_DIM, len(word_to_ix), len(tag_to_ix))
 # model = CNNTagger(NUM_LAYERS, CONTEXT, EMBEDDING_DIM, HIDDEN_DIM, len(word_to_ix), len(tag_to_ix))
-model = build_model(len(word_to_ix), len(tag_to_ix), N=1)
+model = build_model(len(word_to_ix), len(tag_to_ix), context=CONTEXT, N=1)
 loss_function = nn.NLLLoss()
 # loss_function = nn.CrossEntropyLoss()
 
 # optimizer = optim.SGD(model.parameters(), lr=0.1)
 optimizer = optim.SGD(model.parameters(), lr=0.001, momentum=0.9)
+# optimizer = optim.Adam(model.parameters(), lr=0.0001, betas=(0.9, 0.999), eps=1e-8)
 
 use_cuda = torch.cuda.is_available()
 print(use_cuda)
@@ -98,4 +99,6 @@ with torch.no_grad():
     # since 0 is index of the maximum value of row 1,
     # 1 is the index of maximum value of row 2, etc.
     # Which is DET NOUN VERB DET NOUN, the correct sequence!
+    _, predicted = torch.max(tag_scores, dim=1)
+    print(predicted)
     print(tag_scores)

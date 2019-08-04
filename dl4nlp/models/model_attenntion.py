@@ -15,10 +15,12 @@ from dl4nlp.models.modelutils.utils_transfromer import clones, attention
 
 
 class MultiHeadedAttention(nn.Module):
-    def __init__(self, h, d_model, dropout=0.1):
+    def __init__(self, h, d_model, dropout=0.1, context=3):
         "Take in model size and number of heads."
         super(MultiHeadedAttention, self).__init__()
-        d_model = d_model*3
+
+        d_model = d_model*context
+
         assert d_model % h == 0
         # We assume d_v always equals d_k
         self.d_k = d_model // h
