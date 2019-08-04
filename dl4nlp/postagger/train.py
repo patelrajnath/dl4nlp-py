@@ -43,9 +43,8 @@ CONTEXT=3
 # model = GRUTagger(NUM_LAYERS, CONTEXT, EMBEDDING_DIM, HIDDEN_DIM, len(word_to_ix), len(tag_to_ix))
 # model = CNNTagger(NUM_LAYERS, CONTEXT, EMBEDDING_DIM, HIDDEN_DIM, len(word_to_ix), len(tag_to_ix))
 model = build_model(len(word_to_ix), len(tag_to_ix), N=1)
-# loss_function = nn.NLLLoss()
-loss_function = nn.CrossEntropyLoss()
-# loss_function = LabelSmoothing(size=len(word_to_ix), padding_idx=pad_idx, smoothing=0.1)
+loss_function = nn.NLLLoss()
+# loss_function = nn.CrossEntropyLoss()
 
 # optimizer = optim.SGD(model.parameters(), lr=0.1)
 optimizer = optim.SGD(model.parameters(), lr=0.001, momentum=0.9)
@@ -61,17 +60,9 @@ if use_cuda:
 # Here we don't need to train, so the code is wrapped in torch.no_grad()
 with torch.no_grad():
     inputs = prepare_sequence(training_data[0][0], word_to_ix, CONTEXT, use_cuda=use_cuda)
-    # inputs = prepare_sequence(training_data[0][0], word_to_ix, use_cuda=use_cuda)
-    train_iter = MyIterator(training_data, batch_size=10,
-                            device=torch.device("cuda" if torch.cuda.is_available() else "cpu"),
-                            repeat=False, sort_key=lambda x: (len(x.src), len(x.trg)),
-                            batch_size_fn=batch_size_fn, train=True)
-    for i, batch in enumerate(train_iter):
-        out = model.forward(batch.src, batch.trg,
-                            batch.src_mask, batch.trg_mask)
-        tag_scores = model(train_iter)
-        print(tag_scores)
-exit()
+    targets = prepare_sequence(training_data[0][1], tag_to_ix, use_cuda=use_cuda)
+    out = model(inputs)
+    print(out)
 
 for epoch in range(300):  # again, normally you would NOT do 300 epochs, it is toy data
     for sentence, tags in training_data:
