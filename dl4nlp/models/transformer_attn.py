@@ -43,12 +43,12 @@ class EncoderDecoder(nn.Module):
         print(src.size())
         n_tokens = int(len(src))
         embeds = self.src_embed(src)
-        print(embeds.size())
+        # print(embeds.size())
         # exit()
-        enc = self.encoder(embeds, src_mask)
-        return self.generator(enc)
-        # enc = self.encoder(embeds.view(n_tokens, 1, -1), src_mask)
-        # return self.generator(enc.view(n_tokens, -1))
+        # enc = self.encoder(embeds, src_mask)
+        # return self.generator(enc)
+        enc = self.encoder(embeds.view(n_tokens, 1, -1), src_mask)
+        return self.generator(enc.view(n_tokens, -1))
 
 
 class Generator(nn.Module):

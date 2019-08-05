@@ -1,3 +1,4 @@
+import os
 from argparse import Namespace
 
 import torch
@@ -5,6 +6,7 @@ from torch import nn, optim
 
 from dl4nlp import tasks, options, utils
 from dl4nlp.data import iterators
+from dl4nlp.models.checkpoint_utils import load_model_state, save_state
 from dl4nlp.models.cnn import CNNTagger
 from dl4nlp.models.lstm import LSTMTagger
 from dl4nlp.models.transformer_attn import build_model
@@ -41,13 +43,24 @@ def get_train_iterator(task, args, epoch, combine=True):
     )
 
 
+def get_validation_iterator(task, args, epoch, combine=True):
+    """Return an EpochBatchIterator over the training set for a given epoch."""
+    print('| loading train data for epoch {}'.format(epoch))
+    task.load_dataset(args.valid_subset, epoch=epoch, combine=combine)
+    return task.get_batch_iterator(
+        dataset=task.dataset(args.valid_subset),
+        max_tokens=args.max_tokens,
+        max_sentences=args.max_sentences,
+        epoch=epoch,
+    )
+
+
 def prepare_sample(sample, use_cuda=False):
     if sample is None or len(sample) == 0:
         return None
-
     if use_cuda:
-        sample = utils.move_to_cuda(sample)
-    return sample
+        return torch.tensor(sample, dtype=torch.long).cuda()
+    return torch.tensor(sample, dtype=torch.long)
 
 parser = get_data_parser()
 args = options.parse_args_and_arch(parser)
@@ -78,10 +91,11 @@ NUM_LAYERS = 2
 HIDDEN_DIM = 256
 CONTEXT=3
 
-# model = LSTMTagger(NUM_LAYERS, CONTEXT, EMBEDDING_DIM, HIDDEN_DIM, len(word_to_ix), len(tag_to_ix))
+model = LSTMTagger(NUM_LAYERS, CONTEXT, EMBEDDING_DIM, HIDDEN_DIM, len(task.src_dict), len(task.tgt_dict))
+# model = LSTMTagger(NUM_LAYERS, CONTEXT, EMBEDDING_DIM, HIDDEN_DIM, len(task.src_dict), len(task.tgt_dict))
+# model = build_model(len(task.src_dict), len(task.tgt_dict), context=CONTEXT, N=2)
 # model = GRUTagger(NUM_LAYERS, CONTEXT, EMBEDDING_DIM, HIDDEN_DIM, len(word_to_ix), len(tag_to_ix))
 # model = CNNTagger(NUM_LAYERS, CONTEXT, EMBEDDING_DIM, HIDDEN_DIM, len(word_to_ix), len(tag_to_ix))
-model = build_model(len(task.src_dict), len(task.tgt_dict), context=1, N=1)
 # model = build_model(len(word_to_ix), len(tag_to_ix), context=CONTEXT, N=1)
 loss_function = nn.NLLLoss()
 # loss_function = nn.CrossEntropyLoss()
@@ -101,24 +115,36 @@ if use_cuda:
 # Note that element i,j of the output is the score for tag j for word i.
 # Here we don't need to train, so the code is wrapped in torch.no_grad()
 # with torch.no_grad():
-for epoch in range(300):  # again, normally you would NOT do 300 epochs, it is toy data
-    inputs = prepare_sequence(training_data[0][0], word_to_ix, CONTEXT, use_cuda=use_cuda)
-    targets = prepare_sequence(training_data[0][1], tag_to_ix, use_cuda=use_cuda)
-    itr = train_iter.next_epoch_itr(shuffle=(train_iter.epoch >= args.curriculum))
-    itr = iterators.GroupedIterator(itr, 1)
-    model.zero_grad()
-    for i, samples in enumerate(itr):
-        for j, sample in enumerate(samples):
-            sample = prepare_sample(sample, use_cuda)
-            # print(**sample['net_input'])
-            tag_scores = model(**sample['net_input'])
-            tag_scores = tag_scores.view(-1, tag_scores.size(-1))
-            target = sample['target'].view(-1)
-            loss = loss_function(tag_scores, target)
-            print(loss)
-            loss.backward()
-            optimizer.step()
-    # print(out)
+training = True
+modeldir="lstm-models"
+if not os.path.exists(modeldir):
+    os.mkdir(modeldir)
+
+checkpoint_last = 'checkpoint_last.pt'
+if training:
+    start_epoch = load_model_state(os.path.join(modeldir, checkpoint_last), model)
+    for epoch in range(100):  # again, normally you would NOT do 300 epochs, it is toy data
+        itr = train_iter.next_epoch_itr(shuffle=(train_iter.epoch >= args.curriculum))
+        itr = iterators.GroupedIterator(itr, 1)
+        model.zero_grad()
+        for i, samples in enumerate(itr):
+            for j, sample in enumerate(samples):
+                net_input = prepare_sample(contextwin(sample['net_input']['src_tokens'].tolist()[0], CONTEXT), use_cuda)
+                print(net_input)
+                # tag_scores = model(**sample['net_input'])
+                tag_scores = model(net_input)
+                tag_scores = tag_scores.view(-1, tag_scores.size(-1))
+                target = sample['target'].view(-1).cuda()
+                print(tag_scores.size())
+                print(target.size())
+                loss = loss_function(tag_scores, target)
+                print("The Loss", loss)
+                loss.backward()
+                optimizer.step()
+        checkpoint = "checkpoint" + str(epoch) + ".pt"
+        save_state(os.path.join(modeldir, checkpoint), model, loss_function, optimizer, epoch)
+        save_state(os.path.join(modeldir, checkpoint_last), model, loss_function, optimizer, epoch)
+        # print(out)
 
 # for epoch in range(300):  # again, normally you would NOT do 300 epochs, it is toy data
 #     for sentence, tags in training_data:
@@ -144,8 +170,11 @@ for epoch in range(300):  # again, normally you would NOT do 300 epochs, it is t
 #         optimizer.step()
 
 # See what the scores are after training
+itr = get_validation_iterator(task, args, epoch=0, combine=True).next_epoch_itr(shuffle=False)
+itr = iterators.GroupedIterator(itr, 1)
+
 with torch.no_grad():
-    inputs = prepare_sequence(training_data[0][0], word_to_ix, CONTEXT, use_cuda=use_cuda)
+    # inputs = prepare_sequence(training_data[0][0], word_to_ix, CONTEXT, use_cuda=use_cuda)
     # inputs = prepare_sequence(training_data[0][0], word_to_ix, use_cuda=use_cuda)
     # tag_scores = model(inputs)
     # The sentence is "the dog ate the apple".  i,j corresponds to score for tag j
@@ -154,17 +183,21 @@ with torch.no_grad():
     # since 0 is index of the maximum value of row 1,
     # 1 is the index of maximum value of row 2, etc.
     # Which is DET NOUN VERB DET NOUN, the correct sequence!
-    itr = train_iter.next_epoch_itr(shuffle=(train_iter.epoch >= args.curriculum))
-    itr = iterators.GroupedIterator(itr, 1)
+    start_epoch = load_model_state(os.path.join(modeldir, checkpoint_last), model)
     for i, samples in enumerate(itr):
         print(i)
+        count = 0
+        correct_score = 0
         for j, sample in enumerate(samples):
-            sample = prepare_sample(sample, use_cuda)
+            net_input = prepare_sample(contextwin(sample['net_input']['src_tokens'].tolist()[0], CONTEXT), use_cuda)
             # print(**sample['net_input'])
-            tag_scores = model(**sample['net_input'])
+            tag_scores = model(net_input)
             tag_scores = tag_scores.view(-1, tag_scores.size(-1))
-            target = sample['target'].view(-1)
+            target = sample['target'].view(-1).cuda()
             _, predicted = torch.max(tag_scores, dim=1)
-            print(predicted)
-            print(target)
-            exit()
+            correct = torch.nonzero(predicted == target)
+            print(target.size(0))
+            correct_score += (correct.size(0)*1.0/target.size(0))*100
+            count +=1
+
+    print("Accuracy", correct_score/count)
