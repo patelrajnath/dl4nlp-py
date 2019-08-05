@@ -34,16 +34,21 @@ class EncoderDecoder(nn.Module):
         self.tgt_embed = tgt_embed
         self.generator = generator
 
-    def forward(self, src, src_mask=None):
+    def forward(self, src_tokens, src_lengths=None, prev_output_tokens=None, src_mask=None):
         "Take in and process masked src and target sequences."
         # return self.decode(self.encode(src, src_mask), src_mask, tgt, tgt_mask)
-        return self.encode(src, src_mask)
+        return self.encode(src_tokens, src_mask)
 
     def encode(self, src, src_mask):
+        print(src.size())
         n_tokens = int(len(src))
         embeds = self.src_embed(src)
-        enc = self.encoder(embeds.view(n_tokens, 1, -1), src_mask)
-        return self.generator(enc.view(n_tokens, -1))
+        print(embeds.size())
+        # exit()
+        enc = self.encoder(embeds, src_mask)
+        return self.generator(enc)
+        # enc = self.encoder(embeds.view(n_tokens, 1, -1), src_mask)
+        # return self.generator(enc.view(n_tokens, -1))
 
 
 class Generator(nn.Module):

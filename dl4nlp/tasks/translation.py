@@ -8,8 +8,8 @@
 import itertools
 import os
 
-from fairseq import options, utils
-from fairseq.data import (
+from dl4nlp import options, utils
+from dl4nlp.data import (
     ConcatDataset,
     data_utils,
     indexed_dataset,
