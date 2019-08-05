@@ -13,6 +13,8 @@ from dl4nlp.models.gru import GRUTagger
 from dl4nlp.models.lstm import LSTMTagger
 from dl4nlp.models.transformer_attn import build_model
 from dl4nlp.models.modelutils.utils import contextwin
+from dl4nlp.optim.noam import NoamOpt
+from dl4nlp.optim.regularization import LabelSmoothing
 from dl4nlp.options import add_dataset_args, get_parser
 
 
@@ -122,13 +124,15 @@ model = build_model(src_vocab=len(task.src_dict),
 # model = CNNTagger(NUM_LAYERS, CONTEXT, EMBEDDING_DIM, HIDDEN_DIM, len(word_to_ix), len(tag_to_ix))
 # model = build_model(len(word_to_ix), len(tag_to_ix), context=CONTEXT, N=1)
 
-loss_function = nn.NLLLoss()
-# loss_function = nn.CrossEntropyLoss()
+# loss_function = nn.NLLLoss()
+loss_function = nn.CrossEntropyLoss()
+# loss_function = LabelSmoothing(size=len(task.tgt_dict), padding_idx=task.tgt_dict.pad(), smoothing=0.1)
 
 # optimizer = optim.SGD(model.parameters(), lr=0.1)
 # optimizer = optim.SGD(model.parameters(), lr=0.0001, momentum=0.9)
-optimizer = optim.Adam(model.parameters(), lr=0.0001, betas=(0.9, 0.999), eps=1e-8)
+optimizer = optim.Adam(model.parameters(), lr=0.0005, betas=(0.9, 0.98), eps=1e-8)
 # optimizer = optim.Adadelta(model.parameters())
+# optimizer = NoamOpt(model.src_embed[0].d_model, 1, 2000, torch.optim.Adam(model.parameters(), lr=0.0005, betas=(0.9, 0.98), eps=1e-9))
 
 use_cuda = torch.cuda.is_available()
 print(use_cuda)
@@ -145,6 +149,7 @@ training = True
 modeldir="transformer-models"
 # modeldir="lstm-models"
 # modeldir="gru-models"
+# modeldir="cnn-models"
 if not os.path.exists(modeldir):
     os.mkdir(modeldir)
 
@@ -157,7 +162,13 @@ if training:
         model.zero_grad()
         for i, samples in enumerate(itr):
             for j, sample in enumerate(samples):
-                net_input = prepare_sample(contextwin(sample['net_input']['src_tokens'].tolist()[0], CONTEXT), use_cuda)
+                net_input = prepare_sample(
+                    contextwin(l=sample['net_input']['src_tokens'].tolist()[0],
+                               win=CONTEXT,
+                               pad_id=task.tgt_dict.pad()
+                               ),
+                    use_cuda=use_cuda
+                )
                 print(net_input)
                 # tag_scores = model(**sample['net_input'])
                 tag_scores = model(net_input)
@@ -216,7 +227,9 @@ with torch.no_grad():
     reference = list()
     for i, samples in enumerate(itr):
         for j, sample in enumerate(samples):
-            net_input = prepare_sample(contextwin(sample['net_input']['src_tokens'].tolist()[0], CONTEXT), use_cuda)
+            net_input = prepare_sample(contextwin(sample['net_input']['src_tokens'].tolist()[0], CONTEXT,
+                                                  pad_id=task.tgt_dict.pad()),
+                                       use_cuda)
             # print(**sample['net_input'])
             tag_scores = model(net_input)
             tag_scores = tag_scores.view(-1, tag_scores.size(-1))
