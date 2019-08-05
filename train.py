@@ -8,6 +8,7 @@ from dl4nlp import tasks, options, utils
 from dl4nlp.data import iterators
 from dl4nlp.models.checkpoint_utils import load_model_state, save_state
 from dl4nlp.models.cnn import CNNTagger
+from dl4nlp.models.gru import GRUTagger
 from dl4nlp.models.lstm import LSTMTagger
 from dl4nlp.models.transformer_attn import build_model
 from dl4nlp.models.modelutils.utils import contextwin
@@ -43,7 +44,7 @@ def get_train_iterator(task, args, epoch, combine=True):
     )
 
 
-def get_validation_iterator(task, args, epoch, combine=True):
+def get_validation_iterator(task, args, epoch, combine=False):
     """Return an EpochBatchIterator over the training set for a given epoch."""
     print('| loading train data for epoch {}'.format(epoch))
     task.load_dataset(args.valid_subset, epoch=epoch, combine=combine)
@@ -89,21 +90,44 @@ tag_to_ix = {"DET": 0, "NN": 1, "V": 2}
 EMBEDDING_DIM = 512
 NUM_LAYERS = 2
 HIDDEN_DIM = 256
-CONTEXT=3
+CONTEXT=5
 
-model = LSTMTagger(NUM_LAYERS, CONTEXT, EMBEDDING_DIM, HIDDEN_DIM, len(task.src_dict), len(task.tgt_dict))
-# model = LSTMTagger(NUM_LAYERS, CONTEXT, EMBEDDING_DIM, HIDDEN_DIM, len(task.src_dict), len(task.tgt_dict))
-# model = build_model(len(task.src_dict), len(task.tgt_dict), context=CONTEXT, N=2)
+# model = LSTMTagger(num_layers=NUM_LAYERS,
+#                    context=CONTEXT,
+#                    embedding_dim=EMBEDDING_DIM,
+#                    hidden_dim=HIDDEN_DIM,
+#                    vocab_size=len(task.src_dict),
+#                    tagset_size=len(task.tgt_dict),
+#                    bidirectional=True)
+model = GRUTagger(num_layers=NUM_LAYERS,
+                  context=CONTEXT,
+                  embedding_dim=EMBEDDING_DIM,
+                  hidden_dim=HIDDEN_DIM,
+                  vocab_size=len(task.src_dict),
+                  tagset_size=len(task.tgt_dict),
+                  bidirectional=True)
+# model = CNNTagger(num_layers=NUM_LAYERS,
+#                   context=CONTEXT,
+#                   embedding_dim=EMBEDDING_DIM,
+#                   hidden_dim=HIDDEN_DIM,
+#                   vocab_size=len(task.src_dict),
+#                   tagset_size=len(task.tgt_dict))
+# model = build_model(src_vocab=len(task.src_dict),
+#                     tgt_vocab=len(task.tgt_dict),
+#                     context=CONTEXT,
+#                     N=NUM_LAYERS)
+
 # model = GRUTagger(NUM_LAYERS, CONTEXT, EMBEDDING_DIM, HIDDEN_DIM, len(word_to_ix), len(tag_to_ix))
 # model = CNNTagger(NUM_LAYERS, CONTEXT, EMBEDDING_DIM, HIDDEN_DIM, len(word_to_ix), len(tag_to_ix))
 # model = build_model(len(word_to_ix), len(tag_to_ix), context=CONTEXT, N=1)
+
 loss_function = nn.NLLLoss()
 # loss_function = nn.CrossEntropyLoss()
 
 # optimizer = optim.SGD(model.parameters(), lr=0.1)
-# optimizer = optim.SGD(model.parameters(), lr=0.001, momentum=0.9)
-# optimizer = optim.Adam(model.parameters(), lr=0.0001, betas=(0.9, 0.999), eps=1e-8)
-optimizer = optim.Adadelta(model.parameters())
+# optimizer = optim.SGD(model.parameters(), lr=0.0001, momentum=0.9)
+optimizer = optim.Adam(model.parameters(), lr=0.0001, betas=(0.9, 0.999), eps=1e-8)
+# optimizer = optim.Adadelta(model.parameters())
 
 use_cuda = torch.cuda.is_available()
 print(use_cuda)
@@ -117,7 +141,9 @@ if use_cuda:
 # Here we don't need to train, so the code is wrapped in torch.no_grad()
 # with torch.no_grad():
 training = False
+modeldir="transformer-models"
 modeldir="lstm-models"
+modeldir="gru-models"
 if not os.path.exists(modeldir):
     os.mkdir(modeldir)
 
