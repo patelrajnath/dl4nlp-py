@@ -102,7 +102,8 @@ loss_function = nn.NLLLoss()
 
 # optimizer = optim.SGD(model.parameters(), lr=0.1)
 # optimizer = optim.SGD(model.parameters(), lr=0.001, momentum=0.9)
-optimizer = optim.Adam(model.parameters(), lr=0.0001, betas=(0.9, 0.999), eps=1e-8)
+# optimizer = optim.Adam(model.parameters(), lr=0.0001, betas=(0.9, 0.999), eps=1e-8)
+optimizer = optim.Adadelta(model.parameters())
 
 use_cuda = torch.cuda.is_available()
 print(use_cuda)
@@ -115,7 +116,7 @@ if use_cuda:
 # Note that element i,j of the output is the score for tag j for word i.
 # Here we don't need to train, so the code is wrapped in torch.no_grad()
 # with torch.no_grad():
-training = True
+training = False
 modeldir="lstm-models"
 if not os.path.exists(modeldir):
     os.mkdir(modeldir)
