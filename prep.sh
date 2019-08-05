@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-TEXT=/home/raj/PycharmProjects/iconic_fairseq-py/examples/translation/iwslt14.tokenized.de-en
-python3.6 preprocess.py --source-lang de --target-lang en \
-            --trainpref $TEXT/train --validpref $TEXT/valid --testpref $TEXT/test \
+TEXT=/home/raj/PycharmProjects/dl4nlp-py/examples/pos/icon2016/
+python3.6 preprocess.py --source-lang txt --target-lang tags \
+            --trainpref $TEXT/hi-en.train --validpref $TEXT/hi-en.dev --testpref $TEXT/hi-en.test \
                 --destdir data-bin/
