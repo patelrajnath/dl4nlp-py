@@ -6,6 +6,7 @@ from torch import nn, optim
 
 from dl4nlp import tasks, options, utils
 from dl4nlp.data import iterators
+from dl4nlp.eval.f1_measure import get_f1_score
 from dl4nlp.models.checkpoint_utils import load_model_state, save_state
 from dl4nlp.models.cnn import CNNTagger
 from dl4nlp.models.gru import GRUTagger
@@ -99,23 +100,23 @@ CONTEXT=5
 #                    vocab_size=len(task.src_dict),
 #                    tagset_size=len(task.tgt_dict),
 #                    bidirectional=True)
-model = GRUTagger(num_layers=NUM_LAYERS,
-                  context=CONTEXT,
-                  embedding_dim=EMBEDDING_DIM,
-                  hidden_dim=HIDDEN_DIM,
-                  vocab_size=len(task.src_dict),
-                  tagset_size=len(task.tgt_dict),
-                  bidirectional=True)
+# model = GRUTagger(num_layers=NUM_LAYERS,
+#                   context=CONTEXT,
+#                   embedding_dim=EMBEDDING_DIM,
+#                   hidden_dim=HIDDEN_DIM,
+#                   vocab_size=len(task.src_dict),
+#                   tagset_size=len(task.tgt_dict),
+#                   bidirectional=True)
 # model = CNNTagger(num_layers=NUM_LAYERS,
 #                   context=CONTEXT,
 #                   embedding_dim=EMBEDDING_DIM,
 #                   hidden_dim=HIDDEN_DIM,
 #                   vocab_size=len(task.src_dict),
 #                   tagset_size=len(task.tgt_dict))
-# model = build_model(src_vocab=len(task.src_dict),
-#                     tgt_vocab=len(task.tgt_dict),
-#                     context=CONTEXT,
-#                     N=NUM_LAYERS)
+model = build_model(src_vocab=len(task.src_dict),
+                    tgt_vocab=len(task.tgt_dict),
+                    context=CONTEXT,
+                    N=NUM_LAYERS)
 
 # model = GRUTagger(NUM_LAYERS, CONTEXT, EMBEDDING_DIM, HIDDEN_DIM, len(word_to_ix), len(tag_to_ix))
 # model = CNNTagger(NUM_LAYERS, CONTEXT, EMBEDDING_DIM, HIDDEN_DIM, len(word_to_ix), len(tag_to_ix))
@@ -140,10 +141,10 @@ if use_cuda:
 # Note that element i,j of the output is the score for tag j for word i.
 # Here we don't need to train, so the code is wrapped in torch.no_grad()
 # with torch.no_grad():
-training = False
+training = True
 modeldir="transformer-models"
-modeldir="lstm-models"
-modeldir="gru-models"
+# modeldir="lstm-models"
+# modeldir="gru-models"
 if not os.path.exists(modeldir):
     os.mkdir(modeldir)
 
@@ -211,10 +212,9 @@ with torch.no_grad():
     # 1 is the index of maximum value of row 2, etc.
     # Which is DET NOUN VERB DET NOUN, the correct sequence!
     start_epoch = load_model_state(os.path.join(modeldir, checkpoint_last), model)
+    hypothesis = list()
+    reference = list()
     for i, samples in enumerate(itr):
-        print(i)
-        count = 0
-        correct_score = 0
         for j, sample in enumerate(samples):
             net_input = prepare_sample(contextwin(sample['net_input']['src_tokens'].tolist()[0], CONTEXT), use_cuda)
             # print(**sample['net_input'])
@@ -222,9 +222,6 @@ with torch.no_grad():
             tag_scores = tag_scores.view(-1, tag_scores.size(-1))
             target = sample['target'].view(-1).cuda()
             _, predicted = torch.max(tag_scores, dim=1)
-            correct = torch.nonzero(predicted == target)
-            print(target.size(0))
-            correct_score += (correct.size(0)*1.0/target.size(0))*100
-            count +=1
-
-    print("Accuracy", correct_score/count)
+            hypothesis.extend(predicted.tolist())
+            reference.extend(target.tolist())
+    print(get_f1_score(reference, hypothesis))
