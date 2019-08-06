@@ -145,7 +145,7 @@ if use_cuda:
 # Note that element i,j of the output is the score for tag j for word i.
 # Here we don't need to train, so the code is wrapped in torch.no_grad()
 # with torch.no_grad():
-training = False
+training = True
 modeldir="transformer-models"
 # modeldir="lstm-models"
 # modeldir="gru-models"
