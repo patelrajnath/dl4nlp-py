@@ -118,14 +118,14 @@ CONTEXT=5
 model = build_model(src_vocab=len(task.src_dict),
                     tgt_vocab=len(task.tgt_dict),
                     context=CONTEXT,
-                    N=NUM_LAYERS)
+                    N=1)
 
 # model = GRUTagger(NUM_LAYERS, CONTEXT, EMBEDDING_DIM, HIDDEN_DIM, len(word_to_ix), len(tag_to_ix))
 # model = CNNTagger(NUM_LAYERS, CONTEXT, EMBEDDING_DIM, HIDDEN_DIM, len(word_to_ix), len(tag_to_ix))
 # model = build_model(len(word_to_ix), len(tag_to_ix), context=CONTEXT, N=1)
 
-# loss_function = nn.NLLLoss()
-loss_function = nn.CrossEntropyLoss()
+loss_function = nn.NLLLoss()
+# loss_function = nn.CrossEntropyLoss()
 # loss_function = LabelSmoothing(size=len(task.tgt_dict), padding_idx=task.tgt_dict.pad(), smoothing=0.1)
 
 # optimizer = optim.SGD(model.parameters(), lr=0.1)
@@ -145,7 +145,7 @@ if use_cuda:
 # Note that element i,j of the output is the score for tag j for word i.
 # Here we don't need to train, so the code is wrapped in torch.no_grad()
 # with torch.no_grad():
-training = True
+training = False
 modeldir="transformer-models"
 # modeldir="lstm-models"
 # modeldir="gru-models"

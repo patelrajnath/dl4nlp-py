@@ -17,19 +17,6 @@ import warnings
 import torch
 import torch.nn.functional as F
 
-from fairseq.modules import gelu, gelu_accurate
-
-
-def load_ensemble_for_inference(filenames, task, model_arg_overrides=None):
-    from fairseq import checkpoint_utils
-    deprecation_warning(
-        'utils.load_ensemble_for_inference is deprecated. '
-        'Please use checkpoint_utils.load_model_ensemble instead.'
-    )
-    return checkpoint_utils.load_model_ensemble(
-        filenames, arg_overrides=model_arg_overrides, task=task,
-    )
-
 
 def apply_to_sample(f, sample):
     if len(sample) == 0:
@@ -142,7 +129,7 @@ def load_embedding(embed_dict, vocab, embedding):
 
 
 def replace_unk(hypo_str, src_str, alignment, align_dict, unk):
-    from fairseq import tokenizer
+    from dl4nlp.data import tokenizer
     # Tokens are strings here
     hypo_tokens = tokenizer.tokenize_line(hypo_str)
     # TODO: Very rare cases where the replacement is '<eos>' should be handled gracefully
@@ -156,7 +143,7 @@ def replace_unk(hypo_str, src_str, alignment, align_dict, unk):
 
 
 def post_process_prediction(hypo_tokens, src_str, alignment, align_dict, tgt_dict, remove_bpe=None):
-    from fairseq import tokenizer
+    from dl4nlp.data import tokenizer
     hypo_str = tgt_dict.string(hypo_tokens, remove_bpe)
     if align_dict is not None:
         hypo_str = replace_unk(hypo_str, src_str, alignment, align_dict, tgt_dict.unk_string())
@@ -305,25 +292,6 @@ def get_perplexity(loss):
 def deprecation_warning(message, stacklevel=3):
     # don't use DeprecationWarning, since it's ignored by default
     warnings.warn(message, stacklevel=stacklevel)
-
-
-def get_activation_fn(activation: str) -> Callable:
-    """ Returns the activation function corresponding to `activation` """
-    if activation == 'relu':
-        return F.relu
-    elif activation == 'gelu':
-        return gelu
-    elif activation == 'gelu_fast':
-        deprecation_warning('--activation-fn=gelu_fast has been renamed to gelu_accurate')
-        return gelu_accurate
-    elif activation == 'gelu_accurate':
-        return gelu_accurate
-    elif activation == 'tanh':
-        return torch.tanh
-    elif activation == 'linear':
-        return lambda x: x
-    else:
-        raise RuntimeError("--activation-fn {} not supported".format(activation))
 
 
 def get_available_activation_fns() -> List:

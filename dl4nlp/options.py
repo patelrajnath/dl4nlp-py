@@ -10,7 +10,7 @@ import argparse
 import torch
 import sys
 
-from fairseq import utils
+from dl4nlp import utils
 
 
 def get_preprocessing_parser(default_task='translation'):
