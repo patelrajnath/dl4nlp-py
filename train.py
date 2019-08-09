@@ -235,13 +235,14 @@ if training:
         save_state(os.path.join(modeldir, checkpoint), model, loss_function, optimizer, epoch)
         save_state(os.path.join(modeldir, checkpoint_last), model, loss_function, optimizer, epoch)
         if validation[1] > best_f1:
-            logger.info('NEW BEST: epoch' + str(epoch) + 'valid F1' +  str(validation[1]))
+            logger.info('NEW BEST: epoch' + str(epoch) + ', valid F1=' +  str(validation[1]))
             save_state(os.path.join(modeldir, checkpoint_best), model, loss_function, optimizer, epoch)
             training_options["be"] = epoch
+            best_f1 = validation[1]
             # Break if no improvement in 10 epochs
         if abs(training_options['be'] - training_options['ce']) >= 10:
             break
-    logger.info('BEST RESULT: epoch' + str(training_options['be']) + 'valid F1' + str(best_f1) + 'final checkpoint' + checkpoint_best)
+    logger.info('BEST RESULT: epoch' + str(training_options['be']) + ', valid F1=' + str(best_f1) + ', final checkpoint-' + checkpoint_best)
 
 print(get_accuracy_scores(itr))
 # for epoch in range(300):  # again, normally you would NOT do 300 epochs, it is toy data
