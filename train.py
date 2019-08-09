@@ -17,6 +17,9 @@ from dl4nlp.models.modelutils.utils import contextwin
 from dl4nlp.optim.noam import NoamOpt
 from dl4nlp.optim.regularization import LabelSmoothing
 from dl4nlp.options import add_dataset_args, get_parser
+from dl4nlp.logger import LogManager
+
+logger = LogManager().logger
 
 
 def prepare_sequence(seq, to_ix, ctx=None, use_cuda=False):
@@ -153,6 +156,7 @@ modeldir="transformer-models"
 if not os.path.exists(modeldir):
     os.mkdir(modeldir)
 checkpoint_last = 'checkpoint_last.pt'
+checkpoint_best = "checkpoint_best.pt"
 
 # See what the scores are after training
 itr = get_validation_iterator(task, args, epoch=0, combine=True).next_epoch_itr(shuffle=False)
@@ -230,15 +234,14 @@ if training:
         checkpoint = "checkpoint" + str(epoch) + ".pt"
         save_state(os.path.join(modeldir, checkpoint), model, loss_function, optimizer, epoch)
         save_state(os.path.join(modeldir, checkpoint_last), model, loss_function, optimizer, epoch)
-        checkpoint_best = "checkpoint_best.pt"
         if validation[1] > best_f1:
-            print('NEW BEST: epoch', epoch, 'valid F1', validation[1])
+            logger.info('NEW BEST: epoch' , epoch, 'valid F1', validation[1])
             save_state(os.path.join(modeldir, checkpoint_best), model, loss_function, optimizer, epoch)
             training_options["be"] = epoch
             # Break if no improvement in 10 epochs
         if abs(training_options['be'] - training_options['ce']) >= 10:
             break
-        print('BEST RESULT: epoch', training_options['be'], 'valid F1', best_f1, 'final checkpoint', checkpoint_best)
+    logger.info('BEST RESULT: epoch', training_options['be'], 'valid F1', best_f1, 'final checkpoint', checkpoint_best)
 
 print(get_accuracy_scores(itr))
 # for epoch in range(300):  # again, normally you would NOT do 300 epochs, it is toy data
