@@ -1,6 +1,7 @@
 import os
 from argparse import Namespace
 
+import numpy
 import torch
 from torch import nn, optim
 
@@ -145,18 +146,58 @@ if use_cuda:
 # Note that element i,j of the output is the score for tag j for word i.
 # Here we don't need to train, so the code is wrapped in torch.no_grad()
 # with torch.no_grad():
-training = True
 modeldir="transformer-models"
 # modeldir="lstm-models"
 # modeldir="gru-models"
 # modeldir="cnn-models"
 if not os.path.exists(modeldir):
     os.mkdir(modeldir)
-
 checkpoint_last = 'checkpoint_last.pt'
+
+# See what the scores are after training
+itr = get_validation_iterator(task, args, epoch=0, combine=True).next_epoch_itr(shuffle=False)
+itr = iterators.GroupedIterator(itr, 1)
+
+
+def get_accuracy_scores(data_iterator):
+    with torch.no_grad():
+        # inputs = prepare_sequence(training_data[0][0], word_to_ix, CONTEXT, use_cuda=use_cuda)
+        # inputs = prepare_sequence(training_data[0][0], word_to_ix, use_cuda=use_cuda)
+        # tag_scores = model(inputs)
+        # The sentence is "the dog ate the apple".  i,j corresponds to score for tag j
+        # for word i. The predicted tag is the maximum scoring tag.
+        # Here, we can see the predicted sequence below is 0 1 2 0 1
+        # since 0 is index of the maximum value of row 1,
+        # 1 is the index of maximum value of row 2, etc.
+        # Which is DET NOUN VERB DET NOUN, the correct sequence!
+        start_epoch = load_model_state(os.path.join(modeldir, checkpoint_last), model)
+        hypothesis = list()
+        reference = list()
+        for i, samples in enumerate(data_iterator):
+            for j, sample in enumerate(samples):
+                net_input = prepare_sample(contextwin(sample['net_input']['src_tokens'].tolist()[0], CONTEXT,
+                                                      pad_id=task.tgt_dict.pad()),
+                                           use_cuda)
+                # print(**sample['net_input'])
+                tag_scores = model(net_input)
+                tag_scores = tag_scores.view(-1, tag_scores.size(-1))
+                target = sample['target'].view(-1)
+                if use_cuda:
+                    target.cuda()
+                _, predicted = torch.max(tag_scores, dim=1)
+                hypothesis.extend(predicted.tolist())
+                reference.extend(target.tolist())
+        return get_f1_score(reference, hypothesis)
+
+
+training = True
+# train with early stopping on validation set
+best_f1 = -numpy.inf
+training_options = dict()
 if training:
     start_epoch = load_model_state(os.path.join(modeldir, checkpoint_last), model)
     for epoch in range(100):  # again, normally you would NOT do 300 epochs, it is toy data
+        training_options["ce"] = epoch
         itr = train_iter.next_epoch_itr(shuffle=(train_iter.epoch >= args.curriculum))
         itr = iterators.GroupedIterator(itr, 1)
         model.zero_grad()
@@ -173,18 +214,30 @@ if training:
                 # tag_scores = model(**sample['net_input'])
                 tag_scores = model(net_input)
                 tag_scores = tag_scores.view(-1, tag_scores.size(-1))
-                target = sample['target'].view(-1).cuda()
+                target = sample['target'].view(-1)
+                if use_cuda:
+                    target.cuda()
                 print(tag_scores.size())
                 print(target.size())
                 loss = loss_function(tag_scores, target)
                 print("The Loss", loss)
                 loss.backward()
                 optimizer.step()
+        validation = get_accuracy_scores(itr)
         checkpoint = "checkpoint" + str(epoch) + ".pt"
         save_state(os.path.join(modeldir, checkpoint), model, loss_function, optimizer, epoch)
         save_state(os.path.join(modeldir, checkpoint_last), model, loss_function, optimizer, epoch)
-        # print(out)
+        checkpoint_best = "checkpoint_best.pt"
+        if validation[1] > best_f1:
+            print('NEW BEST: epoch', epoch, 'valid F1', validation[1])
+            save_state(os.path.join(modeldir, checkpoint_best), model, loss_function, optimizer, epoch)
+            training_options["be"] = epoch
+            # Break if no improvement in 10 epochs
+        if abs(training_options['be'] - training_options['ce']) >= 10:
+            break
+        print('BEST RESULT: epoch', training_options['be'], 'valid F1', best_f1, 'final checkpoint', checkpoint_best)
 
+print(get_accuracy_scores(itr))
 # for epoch in range(300):  # again, normally you would NOT do 300 epochs, it is toy data
 #     for sentence, tags in training_data:
 #         # Step 1. Remember that Pytorch accumulates gradients.
@@ -208,33 +261,3 @@ if training:
 #         loss.backward()
 #         optimizer.step()
 
-# See what the scores are after training
-itr = get_validation_iterator(task, args, epoch=0, combine=True).next_epoch_itr(shuffle=False)
-itr = iterators.GroupedIterator(itr, 1)
-
-with torch.no_grad():
-    # inputs = prepare_sequence(training_data[0][0], word_to_ix, CONTEXT, use_cuda=use_cuda)
-    # inputs = prepare_sequence(training_data[0][0], word_to_ix, use_cuda=use_cuda)
-    # tag_scores = model(inputs)
-    # The sentence is "the dog ate the apple".  i,j corresponds to score for tag j
-    # for word i. The predicted tag is the maximum scoring tag.
-    # Here, we can see the predicted sequence below is 0 1 2 0 1
-    # since 0 is index of the maximum value of row 1,
-    # 1 is the index of maximum value of row 2, etc.
-    # Which is DET NOUN VERB DET NOUN, the correct sequence!
-    start_epoch = load_model_state(os.path.join(modeldir, checkpoint_last), model)
-    hypothesis = list()
-    reference = list()
-    for i, samples in enumerate(itr):
-        for j, sample in enumerate(samples):
-            net_input = prepare_sample(contextwin(sample['net_input']['src_tokens'].tolist()[0], CONTEXT,
-                                                  pad_id=task.tgt_dict.pad()),
-                                       use_cuda)
-            # print(**sample['net_input'])
-            tag_scores = model(net_input)
-            tag_scores = tag_scores.view(-1, tag_scores.size(-1))
-            target = sample['target'].view(-1).cuda()
-            _, predicted = torch.max(tag_scores, dim=1)
-            hypothesis.extend(predicted.tolist())
-            reference.extend(target.tolist())
-    print(get_f1_score(reference, hypothesis))
