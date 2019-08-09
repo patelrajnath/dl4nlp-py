@@ -89,7 +89,6 @@ for sent, tags in training_data:
     for word in sent:
         if word not in word_to_ix:
             word_to_ix[word] = len(word_to_ix)
-print(word_to_ix)
 tag_to_ix = {"DET": 0, "NN": 1, "V": 2}
 
 # These will usually be more like 32 or 64 dimensional.
@@ -106,23 +105,23 @@ CONTEXT=5
 #                    vocab_size=len(task.src_dict),
 #                    tagset_size=len(task.tgt_dict),
 #                    bidirectional=True)
-# model = GRUTagger(num_layers=NUM_LAYERS,
-#                   context=CONTEXT,
-#                   embedding_dim=EMBEDDING_DIM,
-#                   hidden_dim=HIDDEN_DIM,
-#                   vocab_size=len(task.src_dict),
-#                   tagset_size=len(task.tgt_dict),
-#                   bidirectional=True)
+model = GRUTagger(num_layers=NUM_LAYERS,
+                  context=CONTEXT,
+                  embedding_dim=EMBEDDING_DIM,
+                  hidden_dim=HIDDEN_DIM,
+                  vocab_size=len(task.src_dict),
+                  tagset_size=len(task.tgt_dict),
+                  bidirectional=True)
 # model = CNNTagger(num_layers=NUM_LAYERS,
 #                   context=CONTEXT,
 #                   embedding_dim=EMBEDDING_DIM,
 #                   hidden_dim=HIDDEN_DIM,
 #                   vocab_size=len(task.src_dict),
 #                   tagset_size=len(task.tgt_dict))
-model = build_model(src_vocab=len(task.src_dict),
-                    tgt_vocab=len(task.tgt_dict),
-                    context=CONTEXT,
-                    N=1)
+# model = build_model(src_vocab=len(task.src_dict),
+#                     tgt_vocab=len(task.tgt_dict),
+#                     context=CONTEXT,
+#                     N=1)
 
 # model = GRUTagger(NUM_LAYERS, CONTEXT, EMBEDDING_DIM, HIDDEN_DIM, len(word_to_ix), len(tag_to_ix))
 # model = CNNTagger(NUM_LAYERS, CONTEXT, EMBEDDING_DIM, HIDDEN_DIM, len(word_to_ix), len(tag_to_ix))
@@ -134,9 +133,10 @@ loss_function = nn.NLLLoss()
 
 # optimizer = optim.SGD(model.parameters(), lr=0.1)
 # optimizer = optim.SGD(model.parameters(), lr=0.0001, momentum=0.9)
-optimizer = optim.Adam(model.parameters(), lr=0.0005, betas=(0.9, 0.98), eps=1e-8)
-# optimizer = optim.Adadelta(model.parameters())
+# optimizer = optim.Adam(model.parameters(), lr=0.0001, betas=(0.9, 0.98), eps=1e-8)
+optimizer = optim.Adadelta(model.parameters(), lr=0.0001, rho=0.9, eps=1e-8)
 # optimizer = NoamOpt(model.src_embed[0].d_model, 1, 2000, torch.optim.Adam(model.parameters(), lr=0.0005, betas=(0.9, 0.98), eps=1e-9))
+# optimizer = NoamOpt(model.hidden_dim, 1, 2000, torch.optim.Adam(model.parameters(), lr=0, betas=(0.9, 0.98), eps=1e-9))
 
 use_cuda = torch.cuda.is_available()
 print(use_cuda)
@@ -149,32 +149,23 @@ if use_cuda:
 # Note that element i,j of the output is the score for tag j for word i.
 # Here we don't need to train, so the code is wrapped in torch.no_grad()
 # with torch.no_grad():
-modeldir="transformer-models"
+# modeldir="transformer-models"
 # modeldir="lstm-models"
-# modeldir="gru-models"
+modeldir="gru-models"
 # modeldir="cnn-models"
 if not os.path.exists(modeldir):
     os.mkdir(modeldir)
 checkpoint_last = 'checkpoint_last.pt'
 checkpoint_best = "checkpoint_best.pt"
 
+
 # See what the scores are after training
-itr = get_validation_iterator(task, args, epoch=0, combine=True).next_epoch_itr(shuffle=False)
-itr = iterators.GroupedIterator(itr, 1)
-
-
-def get_accuracy_scores(data_iterator):
+def get_accuracy_scores(eval=False):
+    data_iterator = get_validation_iterator(task, args, epoch=0, combine=True).next_epoch_itr(shuffle=False)
+    data_iterator = iterators.GroupedIterator(data_iterator, 1)
+    if eval:
+        start_epoch = load_model_state(os.path.join(modeldir, checkpoint_best), model)
     with torch.no_grad():
-        # inputs = prepare_sequence(training_data[0][0], word_to_ix, CONTEXT, use_cuda=use_cuda)
-        # inputs = prepare_sequence(training_data[0][0], word_to_ix, use_cuda=use_cuda)
-        # tag_scores = model(inputs)
-        # The sentence is "the dog ate the apple".  i,j corresponds to score for tag j
-        # for word i. The predicted tag is the maximum scoring tag.
-        # Here, we can see the predicted sequence below is 0 1 2 0 1
-        # since 0 is index of the maximum value of row 1,
-        # 1 is the index of maximum value of row 2, etc.
-        # Which is DET NOUN VERB DET NOUN, the correct sequence!
-        start_epoch = load_model_state(os.path.join(modeldir, checkpoint_last), model)
         hypothesis = list()
         reference = list()
         for i, samples in enumerate(data_iterator):
@@ -207,6 +198,8 @@ if training:
         itr = train_iter.next_epoch_itr(shuffle=(train_iter.epoch >= args.curriculum))
         itr = iterators.GroupedIterator(itr, 1)
         model.zero_grad()
+
+        epoch_loss = 0
         for i, samples in enumerate(itr):
             for j, sample in enumerate(samples):
                 net_input = prepare_sample(
@@ -216,7 +209,6 @@ if training:
                                ),
                     use_cuda=use_cuda
                 )
-                print(net_input)
                 # tag_scores = model(**sample['net_input'])
                 tag_scores = model(net_input)
                 tag_scores = tag_scores.view(-1, tag_scores.size(-1))
@@ -224,13 +216,12 @@ if training:
                     target = sample['target'].view(-1).cuda()
                 else:
                     target = sample['target'].view(-1)
-                print(tag_scores.size())
-                print(target.size())
                 loss = loss_function(tag_scores, target)
-                print("The Loss", loss)
+                epoch_loss += loss
                 loss.backward()
                 optimizer.step()
-        validation = get_accuracy_scores(itr)
+        print("epoch {0} loss={1}".format(epoch, epoch_loss))
+        validation = get_accuracy_scores()
         checkpoint = "checkpoint" + str(epoch) + ".pt"
         save_state(os.path.join(modeldir, checkpoint), model, loss_function, optimizer, epoch)
         save_state(os.path.join(modeldir, checkpoint_last), model, loss_function, optimizer, epoch)
@@ -244,7 +235,7 @@ if training:
             break
     logger.info('BEST RESULT: epoch' + str(training_options['be']) + ', valid F1=' + str(best_f1) + ', final checkpoint-' + checkpoint_best)
 
-print(get_accuracy_scores(itr))
+print(get_accuracy_scores(eval=True))
 # for epoch in range(300):  # again, normally you would NOT do 300 epochs, it is toy data
 #     for sentence, tags in training_data:
 #         # Step 1. Remember that Pytorch accumulates gradients.
@@ -267,4 +258,3 @@ print(get_accuracy_scores(itr))
 #         print(loss)
 #         loss.backward()
 #         optimizer.step()
-
