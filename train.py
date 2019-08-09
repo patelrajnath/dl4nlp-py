@@ -183,7 +183,9 @@ def get_accuracy_scores(data_iterator):
                 tag_scores = tag_scores.view(-1, tag_scores.size(-1))
                 target = sample['target'].view(-1)
                 if use_cuda:
-                    target.cuda()
+                    target = sample['target'].view(-1).cuda()
+                else:
+                    target = sample['target'].view(-1)
                 _, predicted = torch.max(tag_scores, dim=1)
                 hypothesis.extend(predicted.tolist())
                 reference.extend(target.tolist())
@@ -214,9 +216,10 @@ if training:
                 # tag_scores = model(**sample['net_input'])
                 tag_scores = model(net_input)
                 tag_scores = tag_scores.view(-1, tag_scores.size(-1))
-                target = sample['target'].view(-1)
                 if use_cuda:
-                    target.cuda()
+                    target = sample['target'].view(-1).cuda()
+                else:
+                    target = sample['target'].view(-1)
                 print(tag_scores.size())
                 print(target.size())
                 loss = loss_function(tag_scores, target)
