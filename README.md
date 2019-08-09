@@ -1,6 +1,4 @@
-# dl4nlp-py
-This contains RNN based word level quality estimation, and POS Tagger.
-
+# dl4nlp-py (Deep Learning for Natural Language Processing)
 This repository contains:
 
 (1) RNN, CNN, and Transformer based system for word level quality estimation.
