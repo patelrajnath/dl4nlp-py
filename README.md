@@ -1,13 +1,15 @@
 # dl4nlp-py
-This contains RNN based word level quality estimation, and Part-of-Speech-Tagger.
+This contains RNN based word level quality estimation, and POS Tagger.
 
 This repository contains:
 
-(1) RNN based system for word level quality estimation.
+(1) RNN, CNN, and Transformer based system for word level quality estimation.
 
-(2) RNN based Part-of-Speech tagger for code-mixed social media text.
+(2) RNN, CNN, and Transformer based Part-of-Speech tagger for code-mixed social media text.
 
-This includes the implementation of various RNN models including simple Recurrent Neural Network, Long-Short Term Memory (LSTM), DeepLSTM, and Gated Recurrent Units (GRU) aka Gated Hidden Units (GHU). The system is flexible to be used for any word level NLP tagging task like Named Entity Recognition etc.
+The RNN models include simple Recurrent Neural Network, Long-Short Term Memory (LSTM), DeepLSTM,
+and Gated Recurrent Units (GRU) aka Gated Hidden Units (GHU).
+The system is flexible to be used for any word level NLP tagging task like Named Entity Recognition etc.
 
 ## Pre-requisites
 - python (3.6+)
