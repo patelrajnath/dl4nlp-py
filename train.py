@@ -134,7 +134,7 @@ loss_function = nn.NLLLoss()
 # optimizer = optim.SGD(model.parameters(), lr=0.1)
 # optimizer = optim.SGD(model.parameters(), lr=0.0001, momentum=0.9)
 # optimizer = optim.Adam(model.parameters(), lr=0.0001, betas=(0.9, 0.98), eps=1e-8)
-optimizer = optim.Adadelta(model.parameters(), lr=0.0001, rho=0.9, eps=1e-8)
+optimizer = optim.Adadelta(model.parameters(), lr=0.0001, rho=0.95, eps=1e-6)
 # optimizer = NoamOpt(model.src_embed[0].d_model, 1, 2000, torch.optim.Adam(model.parameters(), lr=0.0005, betas=(0.9, 0.98), eps=1e-9))
 # optimizer = NoamOpt(model.hidden_dim, 1, 2000, torch.optim.Adam(model.parameters(), lr=0, betas=(0.9, 0.98), eps=1e-9))
 
