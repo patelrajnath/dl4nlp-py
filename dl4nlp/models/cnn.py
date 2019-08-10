@@ -52,7 +52,6 @@ class CNNTagger(nn.Module):
         # Convolution 1
         out = self.cnn1(embeds.view(n_tokens, self.in_channel, 1, -1))
         # out = self.cnn1(embeds)
-        print(out.size())
         out = self.relu1(out)
 
         # Max pool 1

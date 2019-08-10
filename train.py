@@ -53,7 +53,6 @@ def get_train_iterator(task, args, epoch, combine=True):
 
 def get_validation_iterator(task, args, epoch, combine=False):
     """Return an EpochBatchIterator over the training set for a given epoch."""
-    print('| loading train data for epoch {}'.format(epoch))
     task.load_dataset(args.valid_subset, epoch=epoch, combine=combine)
     return task.get_batch_iterator(
         dataset=task.dataset(args.valid_subset),
@@ -94,7 +93,7 @@ tag_to_ix = {"DET": 0, "NN": 1, "V": 2}
 # These will usually be more like 32 or 64 dimensional.
 # We will keep them small, so we can see how the weights change as we train.
 EMBEDDING_DIM = 512
-NUM_LAYERS = 2
+NUM_LAYERS = 1
 HIDDEN_DIM = 256
 CONTEXT=5
 
@@ -121,7 +120,9 @@ model = GRUTagger(num_layers=NUM_LAYERS,
 # model = build_model(src_vocab=len(task.src_dict),
 #                     tgt_vocab=len(task.tgt_dict),
 #                     context=CONTEXT,
-#                     N=1)
+#                     N=1,
+#                     d_ff=512,
+#                     h=2)
 
 # model = GRUTagger(NUM_LAYERS, CONTEXT, EMBEDDING_DIM, HIDDEN_DIM, len(word_to_ix), len(tag_to_ix))
 # model = CNNTagger(NUM_LAYERS, CONTEXT, EMBEDDING_DIM, HIDDEN_DIM, len(word_to_ix), len(tag_to_ix))
