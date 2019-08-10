@@ -40,7 +40,6 @@ class EncoderDecoder(nn.Module):
         return self.encode(src_tokens, src_mask)
 
     def encode(self, src, src_mask):
-        print(src.size())
         n_tokens = int(len(src))
         embeds = self.src_embed(src)
         # print(embeds.size())
