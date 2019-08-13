@@ -12,8 +12,8 @@ from dl4nlp.models.checkpoint_utils import load_model_state, save_state
 from dl4nlp.models.cnn import CNNTagger
 from dl4nlp.models.gru import GRUTagger
 from dl4nlp.models.lstm import LSTMTagger
-from dl4nlp.models.transformer_attn import build_model
 from dl4nlp.models.modelutils.utils import contextwin
+from dl4nlp.models.transformer_attn import EncoderDecoder, Transformer
 from dl4nlp.optim.noam import NoamOpt
 from dl4nlp.optim.regularization import LabelSmoothing
 from dl4nlp.options import add_dataset_args, get_parser
@@ -69,6 +69,7 @@ def prepare_sample(sample, use_cuda=False):
         return torch.tensor(sample, dtype=torch.long).cuda()
     return torch.tensor(sample, dtype=torch.long)
 
+
 parser = get_data_parser()
 args = options.parse_args_and_arch(parser)
 task = tasks.setup_task(args)
@@ -104,25 +105,27 @@ CONTEXT=5
 #                    vocab_size=len(task.src_dict),
 #                    tagset_size=len(task.tgt_dict),
 #                    bidirectional=True)
-model = GRUTagger(num_layers=NUM_LAYERS,
-                  context=CONTEXT,
-                  embedding_dim=EMBEDDING_DIM,
-                  hidden_dim=HIDDEN_DIM,
-                  vocab_size=len(task.src_dict),
-                  tagset_size=len(task.tgt_dict),
-                  bidirectional=True)
+# model = GRUTagger(num_layers=NUM_LAYERS,
+#                   context=CONTEXT,
+#                   embedding_dim=EMBEDDING_DIM,
+#                   hidden_dim=HIDDEN_DIM,
+#                   vocab_size=len(task.src_dict),
+#                   tagset_size=len(task.tgt_dict),
+#                   bidirectional=True)
 # model = CNNTagger(num_layers=NUM_LAYERS,
 #                   context=CONTEXT,
 #                   embedding_dim=EMBEDDING_DIM,
 #                   hidden_dim=HIDDEN_DIM,
 #                   vocab_size=len(task.src_dict),
 #                   tagset_size=len(task.tgt_dict))
-# model = build_model(src_vocab=len(task.src_dict),
-#                     tgt_vocab=len(task.tgt_dict),
-#                     context=CONTEXT,
-#                     N=1,
-#                     d_ff=512,
-#                     h=2)
+
+init = Transformer()
+model = init.build_model(src_vocab=len(task.src_dict),
+                    tgt_vocab=len(task.tgt_dict),
+                    context=CONTEXT,
+                    N=1,
+                    d_ff=512,
+                    h=2)
 
 # model = GRUTagger(NUM_LAYERS, CONTEXT, EMBEDDING_DIM, HIDDEN_DIM, len(word_to_ix), len(tag_to_ix))
 # model = CNNTagger(NUM_LAYERS, CONTEXT, EMBEDDING_DIM, HIDDEN_DIM, len(word_to_ix), len(tag_to_ix))

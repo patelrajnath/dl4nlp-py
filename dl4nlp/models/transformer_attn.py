@@ -15,10 +15,37 @@ import copy
 from torch.nn import functional as F
 from torch import nn
 
-
+from dl4nlp.models import register_model
+from dl4nlp.models.dl4nlp_model import BaseModel
 from dl4nlp.models.model_attenntion import MultiHeadedAttention
 from dl4nlp.models.modelutils.embedding import PositionwiseFeedForward, PositionalEncoding, Embeddings
 from dl4nlp.models.modelutils.utils_transfromer import clones
+
+
+@register_model("transformer")
+class Transformer(BaseModel):
+    def __init__(self):
+        super().__init__()
+
+    def build_model(cls, src_vocab, tgt_vocab, context=1, N=6,
+                    d_model=512, d_ff=2048, h=8, dropout=0.1):
+        "Helper: Construct a model from hyperparameters."
+        c = copy.deepcopy
+        attn = MultiHeadedAttention(h, d_model, context=context)
+        ff = PositionwiseFeedForward(d_model, d_ff, dropout, context=context)
+        position = PositionalEncoding(d_model, dropout)
+        model = EncoderDecoder(
+            Encoder(EncoderLayer(d_model, c(attn), c(ff), dropout, context=context), N),
+            nn.Sequential(Embeddings(d_model, src_vocab), c(position)),
+            nn.Sequential(Embeddings(d_model, tgt_vocab), c(position)),
+            Generator(d_model, tgt_vocab, context=context))
+
+        # This was important from their code.
+        # Initialize parameters with Glorot / fan_avg.
+        for p in model.parameters():
+            if p.dim() > 1:
+                nn.init.xavier_uniform(p)
+        return model
 
 
 class EncoderDecoder(nn.Module):
@@ -28,7 +55,7 @@ class EncoderDecoder(nn.Module):
     """
 
     def __init__(self, encoder, src_embed, tgt_embed, generator):
-        super(EncoderDecoder, self).__init__()
+        super().__init__()
         self.encoder = encoder
         self.src_embed = src_embed
         self.tgt_embed = tgt_embed
@@ -121,24 +148,3 @@ class EncoderLayer(nn.Module):
         "Follow Figure 1 (left) for connections."
         x = self.sublayer[0](x, lambda x: self.self_attn(x, x, x, mask))
         return self.sublayer[1](x, self.feed_forward)
-
-
-def build_model(src_vocab, tgt_vocab, context=1, N=6,
-                d_model=512, d_ff=2048, h=8, dropout=0.1):
-    "Helper: Construct a model from hyperparameters."
-    c = copy.deepcopy
-    attn = MultiHeadedAttention(h, d_model, context=context)
-    ff = PositionwiseFeedForward(d_model, d_ff, dropout, context=context)
-    position = PositionalEncoding(d_model, dropout)
-    model = EncoderDecoder(
-        Encoder(EncoderLayer(d_model, c(attn), c(ff), dropout, context=context), N),
-        nn.Sequential(Embeddings(d_model, src_vocab), c(position)),
-        nn.Sequential(Embeddings(d_model, tgt_vocab), c(position)),
-        Generator(d_model, tgt_vocab, context=context))
-
-    # This was important from their code.
-    # Initialize parameters with Glorot / fan_avg.
-    for p in model.parameters():
-        if p.dim() > 1:
-            nn.init.xavier_uniform(p)
-    return model
