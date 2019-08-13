@@ -16,7 +16,7 @@ from dl4nlp.models.modelutils.utils import contextwin
 from dl4nlp.models.transformer_attn import EncoderDecoder, Transformer
 from dl4nlp.optim.noam import NoamOpt
 from dl4nlp.optim.regularization import LabelSmoothing
-from dl4nlp.options import add_dataset_args, get_parser
+from dl4nlp.options import add_dataset_args, get_parser, add_model_args, add_optimization_args, add_checkpoint_args
 from dl4nlp.logger import LogManager
 
 logger = LogManager().logger
@@ -36,6 +36,9 @@ def prepare_sequence(seq, to_ix, ctx=None, use_cuda=False):
 def get_data_parser(default_task='translation'):
     parser = get_parser('Trainer', default_task)
     add_dataset_args(parser, train=True)
+    add_model_args(parser)
+    add_optimization_args(parser)
+    add_checkpoint_args(parser)
     return parser
 
 
@@ -119,13 +122,14 @@ CONTEXT=5
 #                   vocab_size=len(task.src_dict),
 #                   tagset_size=len(task.tgt_dict))
 
-init = Transformer()
-model = init.build_model(src_vocab=len(task.src_dict),
-                    tgt_vocab=len(task.tgt_dict),
-                    context=CONTEXT,
-                    N=1,
-                    d_ff=512,
-                    h=2)
+
+model = task.build_model(args)
+# model = init.build_model(src_vocab=len(task.src_dict),
+#                     tgt_vocab=len(task.tgt_dict),
+#                     context=CONTEXT,
+#                     N=1,
+#                     d_ff=512,
+#                     h=2)
 
 # model = GRUTagger(NUM_LAYERS, CONTEXT, EMBEDDING_DIM, HIDDEN_DIM, len(word_to_ix), len(tag_to_ix))
 # model = CNNTagger(NUM_LAYERS, CONTEXT, EMBEDDING_DIM, HIDDEN_DIM, len(word_to_ix), len(tag_to_ix))
@@ -158,9 +162,9 @@ if use_cuda:
 # Note that element i,j of the output is the score for tag j for word i.
 # Here we don't need to train, so the code is wrapped in torch.no_grad()
 # with torch.no_grad():
-# modeldir="transformer-models"
+modeldir="transformer-models"
 # modeldir="lstm-models"
-modeldir="gru-models"
+# modeldir="gru-models"
 # modeldir="cnn-models"
 if not os.path.exists(modeldir):
     os.mkdir(modeldir)

@@ -15,7 +15,7 @@ import copy
 from torch.nn import functional as F
 from torch import nn
 
-from dl4nlp.models import register_model
+from dl4nlp.models import register_model, register_model_architecture
 from dl4nlp.models.dl4nlp_model import BaseModel
 from dl4nlp.models.model_attenntion import MultiHeadedAttention
 from dl4nlp.models.modelutils.embedding import PositionwiseFeedForward, PositionalEncoding, Embeddings
@@ -27,18 +27,30 @@ class Transformer(BaseModel):
     def __init__(self):
         super().__init__()
 
-    def build_model(cls, src_vocab, tgt_vocab, context=1, N=6,
-                    d_model=512, d_ff=2048, h=8, dropout=0.1):
+    @classmethod
+    def build_model(self, args, task):
         "Helper: Construct a model from hyperparameters."
+
+        # make sure all arguments are present in older models
+        base_architecture(args)
+        self.embed_dim = args.encoder_embed_dim
+
+        src_dict, tgt_dict = task.source_dictionary, task.target_dictionary
+        context = 5
+        N = args.encoder_layers
+        d_model = args.encoder_embed_dim
+        d_ff = args.encoder_ffn_embed_dim
+        h = args.encoder_attention_heads
+        dropout = args.dropout
         c = copy.deepcopy
         attn = MultiHeadedAttention(h, d_model, context=context)
         ff = PositionwiseFeedForward(d_model, d_ff, dropout, context=context)
         position = PositionalEncoding(d_model, dropout)
         model = EncoderDecoder(
             Encoder(EncoderLayer(d_model, c(attn), c(ff), dropout, context=context), N),
-            nn.Sequential(Embeddings(d_model, src_vocab), c(position)),
-            nn.Sequential(Embeddings(d_model, tgt_vocab), c(position)),
-            Generator(d_model, tgt_vocab, context=context))
+            nn.Sequential(Embeddings(d_model, len(src_dict)), c(position)),
+            nn.Sequential(Embeddings(d_model, len(tgt_dict)), c(position)),
+            Generator(d_model, len(tgt_dict), context=context))
 
         # This was important from their code.
         # Initialize parameters with Glorot / fan_avg.
@@ -148,3 +160,33 @@ class EncoderLayer(nn.Module):
         "Follow Figure 1 (left) for connections."
         x = self.sublayer[0](x, lambda x: self.self_attn(x, x, x, mask))
         return self.sublayer[1](x, self.feed_forward)
+
+
+@register_model_architecture('transformer', 'transformer')
+def base_architecture(args):
+    args.encoder_embed_path = getattr(args, 'encoder_embed_path', None)
+    args.encoder_embed_dim = getattr(args, 'encoder_embed_dim', 512)
+    args.encoder_ffn_embed_dim = getattr(args, 'encoder_ffn_embed_dim', 2048)
+    args.encoder_layers = getattr(args, 'encoder_layers', 1)
+    args.encoder_attention_heads = getattr(args, 'encoder_attention_heads', 8)
+    args.encoder_normalize_before = getattr(args, 'encoder_normalize_before', False)
+    args.encoder_learned_pos = getattr(args, 'encoder_learned_pos', False)
+    args.decoder_embed_path = getattr(args, 'decoder_embed_path', None)
+    args.decoder_embed_dim = getattr(args, 'decoder_embed_dim', args.encoder_embed_dim)
+    args.decoder_ffn_embed_dim = getattr(args, 'decoder_ffn_embed_dim', args.encoder_ffn_embed_dim)
+    args.decoder_layers = getattr(args, 'decoder_layers', 6)
+    args.decoder_attention_heads = getattr(args, 'decoder_attention_heads', 8)
+    args.decoder_normalize_before = getattr(args, 'decoder_normalize_before', False)
+    args.decoder_learned_pos = getattr(args, 'decoder_learned_pos', False)
+    args.attention_dropout = getattr(args, 'attention_dropout', 0.)
+    args.activation_dropout = getattr(args, 'activation_dropout', 0.)
+    args.activation_fn = getattr(args, 'activation_fn', 'relu')
+    args.dropout = getattr(args, 'dropout', 0.1)
+    args.adaptive_softmax_cutoff = getattr(args, 'adaptive_softmax_cutoff', None)
+    args.adaptive_softmax_dropout = getattr(args, 'adaptive_softmax_dropout', 0)
+    args.share_decoder_input_output_embed = getattr(args, 'share_decoder_input_output_embed', False)
+    args.share_all_embeddings = getattr(args, 'share_all_embeddings', False)
+    args.no_token_positional_embeddings = getattr(args, 'no_token_positional_embeddings', False)
+    args.adaptive_input = getattr(args, 'adaptive_input', False)
+    args.decoder_output_dim = getattr(args, 'decoder_output_dim', args.decoder_embed_dim)
+    args.decoder_input_dim = getattr(args, 'decoder_input_dim', args.decoder_embed_dim)

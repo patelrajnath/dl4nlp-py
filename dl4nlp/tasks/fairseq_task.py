@@ -166,7 +166,7 @@ class FairseqTask(object):
         Returns:
             a :class:`~fairseq.models.BaseFairseqModel` instance
         """
-        from fairseq import models
+        from dl4nlp import models
         return models.build_model(args, self)
 
     def build_criterion(self, args):
