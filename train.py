@@ -3,9 +3,9 @@ from argparse import Namespace
 
 import numpy
 import torch
-from torch import nn, optim
+from torch import nn
 
-from dl4nlp import tasks, options, utils
+from dl4nlp import tasks, options, utils, optim
 from dl4nlp.data import iterators
 from dl4nlp.eval.f1_measure import get_f1_score
 from dl4nlp.models.checkpoint_utils import load_model_state, save_state
@@ -148,7 +148,11 @@ loss_function = nn.CrossEntropyLoss()
 #RNN Training
 # optimizer = optim.Adam(model.parameters(), lr=0.0001, betas=(0.9, 0.98), eps=1e-8)
 # CNN Training
-optimizer = optim.SGD(model.parameters(), lr=0.00000025, momentum=0.9)
+# optimizer = optim.SGD(model.parameters(), lr=0.00000025, momentum=0.9)
+optimizer = optim.build_optimizer(args, model.parameters())
+print(args)
+print(optimizer)
+exit()
 # GRU Training
 # optimizer = optim.Adadelta(model.parameters(), lr=0.00001, rho=0.95, eps=1e-6)
 # Transformer Training
