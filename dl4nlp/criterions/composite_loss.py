@@ -7,7 +7,7 @@
 
 from torch import nn
 
-from fairseq import utils
+from dl4nlp import utils
 from . import FairseqCriterion, register_criterion
 
 

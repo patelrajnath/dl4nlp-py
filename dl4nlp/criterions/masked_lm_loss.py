@@ -10,7 +10,7 @@ import math
 import torch
 import torch.nn.functional as F
 
-from fairseq import utils
+from dl4nlp import utils
 from . import FairseqCriterion, register_criterion
 
 

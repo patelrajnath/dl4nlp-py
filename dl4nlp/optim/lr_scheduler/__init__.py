@@ -22,4 +22,4 @@ build_lr_scheduler, register_lr_scheduler, LR_SCHEDULER_REGISTRY = registry.setu
 for file in os.listdir(os.path.dirname(__file__)):
     if file.endswith('.py') and not file.startswith('_'):
         module = file[:file.find('.py')]
-        importlib.import_module('fairseq.optim.lr_scheduler.' + module)
+        importlib.import_module('dl4nlp.optim.lr_scheduler.' + module)
