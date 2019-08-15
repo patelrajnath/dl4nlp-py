@@ -1,6 +1,7 @@
 from torch import nn
 import torch.nn.functional as F
 
+
 class GRUTagger(nn.Module):
 
     def __init__(self, num_layers, context, embedding_dim, hidden_dim, vocab_size, tagset_size, bidirectional=False):
