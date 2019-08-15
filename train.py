@@ -16,7 +16,8 @@ from dl4nlp.models.modelutils.utils import contextwin
 from dl4nlp.models.transformer_attn import EncoderDecoder, Transformer
 from dl4nlp.optim.noam import NoamOpt
 from dl4nlp.optim.regularization import LabelSmoothing
-from dl4nlp.options import add_dataset_args, get_parser, add_model_args, add_optimization_args, add_checkpoint_args
+from dl4nlp.options import add_dataset_args, get_parser, add_model_args, add_optimization_args, add_checkpoint_args, \
+    add_distributed_training_args
 from dl4nlp.logger import LogManager
 
 logger = LogManager().logger
@@ -36,6 +37,7 @@ def prepare_sequence(seq, to_ix, ctx=None, use_cuda=False):
 def get_data_parser(default_task='translation'):
     parser = get_parser('Trainer', default_task)
     add_dataset_args(parser, train=True)
+    add_distributed_training_args(parser)
     add_model_args(parser)
     add_optimization_args(parser)
     add_checkpoint_args(parser)
@@ -137,27 +139,11 @@ model = task.build_model(args)
 # model = build_model(len(word_to_ix), len(tag_to_ix), context=CONTEXT, N=1)
 
 # loss_function = nn.NLLLoss()
-
 # CNN Training
 loss_function = nn.CrossEntropyLoss()
-
 # loss_function = LabelSmoothing(size=len(task.tgt_dict), padding_idx=task.tgt_dict.pad(), smoothing=0.1)
 
-# optimizer = optim.SGD(model.parameters(), lr=0.1)
-# optimizer = optim.SGD(model.parameters(), lr=0.0001, momentum=0.9)
-#RNN Training
-# optimizer = optim.Adam(model.parameters(), lr=0.0001, betas=(0.9, 0.98), eps=1e-8)
-# CNN Training
-# optimizer = optim.SGD(model.parameters(), lr=0.00000025, momentum=0.9)
 optimizer = optim.build_optimizer(args, model.parameters())
-print(args)
-print(optimizer)
-exit()
-# GRU Training
-# optimizer = optim.Adadelta(model.parameters(), lr=0.00001, rho=0.95, eps=1e-6)
-# Transformer Training
-# optimizer = NoamOpt(model.src_embed[0].d_model, 1, 2000, torch.optim.Adam(model.parameters(), lr=0, betas=(0.9, 0.98), eps=1e-9))
-# optimizer = NoamOpt(model.hidden_dim, 1, 2000, torch.optim.Adam(model.parameters(), lr=0, betas=(0.9, 0.98), eps=1e-9))
 
 use_cuda = torch.cuda.is_available()
 print(use_cuda)
