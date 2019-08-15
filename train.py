@@ -120,7 +120,8 @@ CONTEXT=5
 #                   embedding_dim=EMBEDDING_DIM,
 #                   hidden_dim=HIDDEN_DIM,
 #                   vocab_size=len(task.src_dict),
-#                   tagset_size=len(task.tgt_dict))
+#                   tagset_size=len(task.tgt_dict),
+#                   dropout=0.5)
 
 
 model = task.build_model(args)
@@ -135,8 +136,11 @@ model = task.build_model(args)
 # model = CNNTagger(NUM_LAYERS, CONTEXT, EMBEDDING_DIM, HIDDEN_DIM, len(word_to_ix), len(tag_to_ix))
 # model = build_model(len(word_to_ix), len(tag_to_ix), context=CONTEXT, N=1)
 
-loss_function = nn.NLLLoss()
-# loss_function = nn.CrossEntropyLoss()
+# loss_function = nn.NLLLoss()
+
+# CNN Training
+loss_function = nn.CrossEntropyLoss()
+
 # loss_function = LabelSmoothing(size=len(task.tgt_dict), padding_idx=task.tgt_dict.pad(), smoothing=0.1)
 
 # optimizer = optim.SGD(model.parameters(), lr=0.1)
@@ -144,9 +148,9 @@ loss_function = nn.NLLLoss()
 #RNN Training
 # optimizer = optim.Adam(model.parameters(), lr=0.0001, betas=(0.9, 0.98), eps=1e-8)
 # CNN Training
-# optimizer = optim.SGD(model.parameters(), lr=0.00000025, momentum=0.9)
+optimizer = optim.SGD(model.parameters(), lr=0.00000025, momentum=0.9)
 # GRU Training
-optimizer = optim.Adadelta(model.parameters(), lr=0.00001, rho=0.95, eps=1e-6)
+# optimizer = optim.Adadelta(model.parameters(), lr=0.00001, rho=0.95, eps=1e-6)
 # Transformer Training
 # optimizer = NoamOpt(model.src_embed[0].d_model, 1, 2000, torch.optim.Adam(model.parameters(), lr=0, betas=(0.9, 0.98), eps=1e-9))
 # optimizer = NoamOpt(model.hidden_dim, 1, 2000, torch.optim.Adam(model.parameters(), lr=0, betas=(0.9, 0.98), eps=1e-9))
@@ -189,7 +193,6 @@ def get_accuracy_scores(eval=False):
                 # print(**sample['net_input'])
                 tag_scores = model(net_input)
                 tag_scores = tag_scores.view(-1, tag_scores.size(-1))
-                target = sample['target'].view(-1)
                 if use_cuda:
                     target = sample['target'].view(-1).cuda()
                 else:

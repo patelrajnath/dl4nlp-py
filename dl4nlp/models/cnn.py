@@ -5,7 +5,7 @@ from dl4nlp.models import register_model, BaseModel, register_model_architecture
 
 
 @register_model("cnn")
-class GRU(BaseModel):
+class CNN(BaseModel):
     def __init__(self):
         super().__init__()
 
@@ -36,8 +36,7 @@ class CNNTagger(nn.Module):
     def __init__(self, num_layers, context, embedding_dim, hidden_dim, vocab_size, tagset_size, dropout, bidirectional=False):
         super(CNNTagger, self).__init__()
         self.hidden_dim = hidden_dim
-
-        self.word_embeddings = nn.Embedding(vocab_size + 1, embedding_dim)
+        self.word_embeddings = nn.Embedding(vocab_size, embedding_dim)
 
         # The LSTM takes word embeddings as inputs, and outputs hidden states
         # with dimensionality hidden_dim.
@@ -70,7 +69,7 @@ class CNNTagger(nn.Module):
         self.maxpool2 = nn.MaxPool2d(kernel_size=3)
 
         # Dropout for regularization
-        self.dropout = nn.Dropout(p=0.5)
+        self.dropout = nn.Dropout(self.dropout_out)
 
         # The linear layer that maps from hidden state space to tag space
         self.hidden2tag = nn.Linear(hidden_dim, tagset_size)

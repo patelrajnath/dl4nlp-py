@@ -5,7 +5,7 @@ from dl4nlp.models import register_model, BaseModel, register_model_architecture
 
 
 @register_model("lstm")
-class GRU(BaseModel):
+class LSTM(BaseModel):
     def __init__(self):
         super().__init__()
 
