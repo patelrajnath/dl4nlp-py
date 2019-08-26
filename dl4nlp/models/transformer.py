@@ -13,8 +13,8 @@ import torch.nn.functional as F
 from dl4nlp.models import register_model, BaseModel, register_model_architecture
 
 
-@register_model("transformer2")
-class Transformer2(BaseModel):
+@register_model("transformer")
+class Transformer(BaseModel):
     def __init__(self, k, heads, depth, seq_length, num_tokens, num_classes):
         super().__init__()
 
@@ -148,7 +148,7 @@ class SelfAttention(nn.Module):
         return self.unifyheads(out)
 
 
-@register_model_architecture('transformer2', 'transformer2')
+@register_model_architecture('transformer', 'transformer')
 def base_architecture(args):
     args.encoder_embed_path = getattr(args, 'encoder_embed_path', None)
     args.encoder_embed_dim = getattr(args, 'encoder_embed_dim', 512)

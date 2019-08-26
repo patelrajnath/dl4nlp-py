@@ -12,8 +12,7 @@ from dl4nlp.models.checkpoint_utils import load_model_state, save_state
 # This is required for registering the models
 from dl4nlp.models.cnn import CNNTagger
 from dl4nlp.models.lstm import LSTMTagger
-from dl4nlp.models.transformer import Transformer2
-from dl4nlp.models.transformer_attn import Transformer
+from dl4nlp.models.transformer import Transformer
 
 from dl4nlp.models.modelutils.utils import contextwin
 from dl4nlp.options import add_dataset_args, get_parser, add_model_args, add_optimization_args, add_checkpoint_args, \
