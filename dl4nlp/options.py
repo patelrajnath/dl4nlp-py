@@ -519,7 +519,8 @@ def add_model_args(parser):
     # 2) --arch argument
     # 3) --encoder/decoder-* arguments (highest priority)
     from dl4nlp.models import ARCH_MODEL_REGISTRY
-    group.add_argument('--arch', '-a', default='fconv', metavar='ARCH', required=True,
+    print(ARCH_MODEL_REGISTRY)
+    group.add_argument('--arch', '-a', default='lstm', metavar='ARCH', required=True,
                        choices=ARCH_MODEL_REGISTRY.keys(),
                        help='Model Architecture')
     # fmt: on
