@@ -13,6 +13,7 @@ from dl4nlp.models.checkpoint_utils import load_model_state, save_state
 from dl4nlp.models.cnn import CNNTagger
 from dl4nlp.models.gru import GRUTagger
 from dl4nlp.models.lstm import LSTMTagger
+from dl4nlp.models.transformer import Transformer2
 from dl4nlp.models.transformer_attn import Transformer
 
 from dl4nlp.models.modelutils.utils import contextwin
