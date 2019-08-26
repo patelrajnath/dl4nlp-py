@@ -7,7 +7,7 @@ ARCH_CONFIG_REGISTRY = {}
 
 
 __all__ = [
-    'BaseModel'
+    'BaseModel',
 ]
 
 

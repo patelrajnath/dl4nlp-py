@@ -93,7 +93,7 @@ def add_server_args(parser):
 
 
 def parse_args_and_arch(parser, input_args=None, parse_known=False):
-    # from fairseq.models import ARCH_MODEL_REGISTRY, ARCH_CONFIG_REGISTRY
+    from dl4nlp.models import ARCH_MODEL_REGISTRY, ARCH_CONFIG_REGISTRY
 
     # The parser doesn't know about model/criterion/optimizer-specific args, so
     # we parse twice. First we parse the model/criterion/optimizer, then we
@@ -109,13 +109,22 @@ def parse_args_and_arch(parser, input_args=None, parse_known=False):
             # arguments or which have default values.
             argument_default=argparse.SUPPRESS,
         )
+        ARCH_MODEL_REGISTRY[args.arch].add_args(model_specific_group)
 
+    # Add *-specific args to parser.
+    from dl4nlp.registry import REGISTRIES
+    for registry_name, REGISTRY in REGISTRIES.items():
+        choice = getattr(args, registry_name, None)
+        if choice is not None:
+            cls = REGISTRY['registry'][choice]
+            if hasattr(cls, 'add_args'):
+                cls.add_args(parser)
     if hasattr(args, 'task'):
         from dl4nlp.tasks import TASK_REGISTRY
         TASK_REGISTRY[args.task].add_args(parser)
     if getattr(args, 'use_bmuf', False):
         # hack to support extra args for block distributed data parallelism
-        from fairseq.optim.bmuf import FairseqBMUF
+        from dl4nlp.optim.bmuf import FairseqBMUF
         FairseqBMUF.add_args(parser)
 
     # Parse a second time.
@@ -132,6 +141,10 @@ def parse_args_and_arch(parser, input_args=None, parse_known=False):
         args.max_tokens_valid = args.max_tokens
     if getattr(args, 'memory_efficient_fp16', False):
         args.fp16 = True
+
+    # Apply architecture configuration.
+    if hasattr(args, 'arch'):
+        ARCH_CONFIG_REGISTRY[args.arch](args)
 
     if parse_known:
         return args, extra
@@ -177,6 +190,14 @@ def get_parser(desc, default_task='translation'):
                         help='threshold FP16 loss scale from below')
     parser.add_argument('--user-dir', default=None,
                         help='path to a python module containing custom extensions (tasks and/or architectures)')
+
+    from dl4nlp.registry import REGISTRIES
+    for registry_name, REGISTRY in REGISTRIES.items():
+        parser.add_argument(
+            '--' + registry_name.replace('_', '-'),
+            default=REGISTRY['default'],
+            choices=REGISTRY['registry'].keys(),
+        )
 
     # Task definitions can be found under fairseq/tasks/
     from dl4nlp.tasks import TASK_REGISTRY

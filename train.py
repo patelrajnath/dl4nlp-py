@@ -1,20 +1,23 @@
 import os
-from argparse import Namespace
 
 import numpy
 import torch
-from torch import nn, optim
+from torch import nn
 
-from dl4nlp import tasks, options, utils
+from dl4nlp import tasks, options, utils, optim
 from dl4nlp.data import iterators
 from dl4nlp.eval.f1_measure import get_f1_score
 from dl4nlp.models.checkpoint_utils import load_model_state, save_state
+
+# This is required for registering the models
 from dl4nlp.models.cnn import CNNTagger
 from dl4nlp.models.lstm import LSTMTagger
+from dl4nlp.models.transformer import Transformer2
+from dl4nlp.models.transformer_attn import Transformer
+
 from dl4nlp.models.modelutils.utils import contextwin
-from dl4nlp.optim.noam import NoamOpt
-from dl4nlp.optim.regularization import LabelSmoothing
-from dl4nlp.options import add_dataset_args, get_parser, add_model_args, add_optimization_args, add_checkpoint_args
+from dl4nlp.options import add_dataset_args, get_parser, add_model_args, add_optimization_args, add_checkpoint_args, \
+    add_distributed_training_args
 from dl4nlp.logger import LogManager
 
 logger = LogManager().logger
@@ -34,6 +37,7 @@ def prepare_sequence(seq, to_ix, ctx=None, use_cuda=False):
 def get_data_parser(default_task='translation'):
     parser = get_parser('Trainer', default_task)
     add_dataset_args(parser, train=True)
+    add_distributed_training_args(parser)
     add_model_args(parser)
     add_optimization_args(parser)
     add_checkpoint_args(parser)
@@ -80,74 +84,13 @@ itr = train_iter.next_epoch_itr(
         shuffle=(train_iter.epoch >= args.curriculum),
     )
 
-
-training_data = [
-    ("The dog ate the apple".split(), ["DET", "NN", "V", "DET", "NN"]),
-    ("Everybody read that book".split(), ["NN", "V", "DET", "NN"])
-]
-word_to_ix = {}
-for sent, tags in training_data:
-    for word in sent:
-        if word not in word_to_ix:
-            word_to_ix[word] = len(word_to_ix)
-tag_to_ix = {"DET": 0, "NN": 1, "V": 2}
-
-# These will usually be more like 32 or 64 dimensional.
-# We will keep them small, so we can see how the weights change as we train.
-EMBEDDING_DIM = 512
-NUM_LAYERS = 1
-HIDDEN_DIM = 256
 CONTEXT=5
-
-# model = LSTMTagger(num_layers=NUM_LAYERS,
-#                    context=CONTEXT,
-#                    embedding_dim=EMBEDDING_DIM,
-#                    hidden_dim=HIDDEN_DIM,
-#                    vocab_size=len(task.src_dict),
-#                    tagset_size=len(task.tgt_dict),
-#                    bidirectional=True)
-# model = GRUTagger(num_layers=NUM_LAYERS,
-#                   context=CONTEXT,
-#                   embedding_dim=EMBEDDING_DIM,
-#                   hidden_dim=HIDDEN_DIM,
-#                   vocab_size=len(task.src_dict),
-#                   tagset_size=len(task.tgt_dict),
-#                   bidirectional=True)
-# model = CNNTagger(num_layers=NUM_LAYERS,
-#                   context=CONTEXT,
-#                   embedding_dim=EMBEDDING_DIM,
-#                   hidden_dim=HIDDEN_DIM,
-#                   vocab_size=len(task.src_dict),
-#                   tagset_size=len(task.tgt_dict))
-
-
 model = task.build_model(args)
-# model = init.build_model(src_vocab=len(task.src_dict),
-#                     tgt_vocab=len(task.tgt_dict),
-#                     context=CONTEXT,
-#                     N=1,
-#                     d_ff=512,
-#                     h=2)
 
-# model = GRUTagger(NUM_LAYERS, CONTEXT, EMBEDDING_DIM, HIDDEN_DIM, len(word_to_ix), len(tag_to_ix))
-# model = CNNTagger(NUM_LAYERS, CONTEXT, EMBEDDING_DIM, HIDDEN_DIM, len(word_to_ix), len(tag_to_ix))
-# model = build_model(len(word_to_ix), len(tag_to_ix), context=CONTEXT, N=1)
-
-loss_function = nn.NLLLoss()
-# loss_function = nn.CrossEntropyLoss()
-# loss_function = LabelSmoothing(size=len(task.tgt_dict), padding_idx=task.tgt_dict.pad(), smoothing=0.1)
-
-# optimizer = optim.SGD(model.parameters(), lr=0.1)
-# optimizer = optim.SGD(model.parameters(), lr=0.0001, momentum=0.9)
-#RNN Training
-# optimizer = optim.Adam(model.parameters(), lr=0.0001, betas=(0.9, 0.98), eps=1e-8)
+# loss_function = nn.NLLLoss()
 # CNN Training
-# optimizer = optim.SGD(model.parameters(), lr=0.00000025, momentum=0.9)
-# GRU Training
-optimizer = optim.Adadelta(model.parameters(), lr=0.00001, rho=0.95, eps=1e-6)
-# Transformer Training
-# optimizer = NoamOpt(model.src_embed[0].d_model, 1, 2000, torch.optim.Adam(model.parameters(), lr=0, betas=(0.9, 0.98), eps=1e-9))
-# optimizer = NoamOpt(model.hidden_dim, 1, 2000, torch.optim.Adam(model.parameters(), lr=0, betas=(0.9, 0.98), eps=1e-9))
+loss_function = nn.CrossEntropyLoss()
+optimizer = optim.build_optimizer(args, model.parameters())
 
 use_cuda = torch.cuda.is_available()
 print(use_cuda)
@@ -187,7 +130,6 @@ def get_accuracy_scores(eval=False):
                 # print(**sample['net_input'])
                 tag_scores = model(net_input)
                 tag_scores = tag_scores.view(-1, tag_scores.size(-1))
-                target = sample['target'].view(-1)
                 if use_cuda:
                     target = sample['target'].view(-1).cuda()
                 else:
