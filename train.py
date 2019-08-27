@@ -92,12 +92,12 @@ loss_function = nn.CrossEntropyLoss()
 optimizer = optim.build_optimizer(args, model.parameters())
 
 use_cuda = torch.cuda.is_available()
-print(use_cuda)
 # use_cuda=False
+print(use_cuda)
 
 if use_cuda:
     model.cuda()
-    # optimizer.cuda()
+
 # See what the scores are before training
 # Note that element i,j of the output is the score for tag j for word i.
 # Here we don't need to train, so the code is wrapped in torch.no_grad()

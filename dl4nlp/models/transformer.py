@@ -15,12 +15,12 @@ from dl4nlp.models import register_model, BaseModel, register_model_architecture
 
 @register_model("transformer")
 class Transformer(BaseModel):
-    def __init__(self, k, heads, depth, seq_length, num_tokens, num_classes):
+    def __init__(self, k, emb_dim, heads, depth, seq_length, num_tokens, num_classes, context=1):
         super().__init__()
 
         self.num_tokens = num_tokens
-        self.token_emb = nn.Embedding(k, num_tokens)
-        self.pos_emb = nn.Embedding(k, seq_length)
+        self.token_emb = nn.Embedding(num_tokens, emb_dim)
+        self.pos_emb = nn.Embedding(seq_length, emb_dim)
 
         # The sequence of transformer blocks that does all the
         # heavy lifting
@@ -45,18 +45,17 @@ class Transformer(BaseModel):
         d_ff = args.encoder_ffn_embed_dim
         h = args.encoder_attention_heads
         dropout = args.dropout
-        c = copy.deepcopy
         self.max_source_positions = args.max_source_positions
         print("In model build", self.max_source_positions)
 
-        d_model = d_model*context
-
-        model = self(k=self.embed_dim,
+        model = self(k=d_model,
+                     emb_dim= self.embed_dim,
                      heads=h,
-                     depth=d_model,
+                     depth=N,
                      seq_length=self.max_source_positions,
                      num_tokens=len(src_dict),
-                     num_classes=len(tgt_dict))
+                     num_classes=len(tgt_dict),
+                     context=context)
         return model
 
     def forward(self, x):
@@ -71,10 +70,11 @@ class Transformer(BaseModel):
         b, t, e = tokens.size()
 
         # generate position embeddings
-        positions = torch.arange(t)
-        positions = self.pos_emb(positions)[None, :, :].expand(b, t, e)
+        # positions = torch.arange(t)
+        # positions = self.pos_emb(positions)[None, :, :].expand(b, t, e)
 
-        x = tokens + positions
+        # x = tokens + positions
+        x = tokens
         x = self.tblocks(x)
 
         # Average-pool over the t dimension and project to class
@@ -108,6 +108,8 @@ class TransformerBlock(nn.Module):
 class SelfAttention(nn.Module):
     def __init__(self, k, heads=8):
         super(SelfAttention, self).__init__()
+
+        self.heads = heads
 
         # These compute the queries, keys and values for all
         # heads (as a single concatenated vector)
