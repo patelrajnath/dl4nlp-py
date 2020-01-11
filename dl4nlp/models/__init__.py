@@ -42,7 +42,6 @@ def register_model(name):
             raise ValueError('Model ({}: {}) must extend BaseModel'.format(name, cls.__name__))
         MODEL_REGISTRY[name] = cls
         return cls
-
     return register_model_cls
 
 

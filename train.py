@@ -11,8 +11,8 @@ from dl4nlp.models.checkpoint_utils import load_model_state, save_state
 
 # This is required for registering the models
 from dl4nlp.models.cnn import CNNTagger
-from dl4nlp.models.gru import GRUTagger
 from dl4nlp.models.lstm import LSTMTagger
+from dl4nlp.models.transformer import Transformer2
 from dl4nlp.models.transformer_attn import Transformer
 
 from dl4nlp.models.modelutils.utils import contextwin
@@ -26,7 +26,7 @@ logger = LogManager().logger
 def prepare_sequence(seq, to_ix, ctx=None, use_cuda=False):
     idxs = [to_ix[w] for w in seq]
     if ctx:
-        idxs = contextwin(idxs, ctx)
+        idxs = contextwin(idxs, ctx, pad_id=0)
 
     if use_cuda:
         return torch.tensor(idxs, dtype=torch.long).cuda()
@@ -103,9 +103,9 @@ if use_cuda:
 # Note that element i,j of the output is the score for tag j for word i.
 # Here we don't need to train, so the code is wrapped in torch.no_grad()
 # with torch.no_grad():
-modeldir="transformer-models"
+# modeldir="transformer-models"
 # modeldir="lstm-models"
-# modeldir="gru-models"
+modeldir="gru-models"
 # modeldir="cnn-models"
 if not os.path.exists(modeldir):
     os.mkdir(modeldir)
